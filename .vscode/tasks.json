@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build HawsLabs.Analyzers.slnx",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"HawsLabs.Analyzers.slnx"
+			],
+			"group": "build",
+			"problemMatcher": "$msCompile"
+		}
+	]
+}

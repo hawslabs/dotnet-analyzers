@@ -1,0 +1,79 @@
+- name: "status:needs-triage"
+  color: "D4C5F9"
+  description: "This needs to be reviewed and labeled"
+
+- name: "status:needs-info"
+  color: "FEF2C0"
+  description: "This needs more information before it can be triaged"
+
+- name: "status:ready-for-agent"
+  color: "C2E0C6"
+  description: "This is ready for an agent to work on"
+
+- name: "status:ready-for-human"
+  color: "BFDADC"
+  description: "This is ready for a human to work on"
+
+- name: "status:waiting"
+  color: "FBCA04"
+  description: "This issue is waiting for something before it can be worked on"
+
+- name: "status:blocked"
+  color: "B60205"
+  description: "This issue is blocked by another issue"
+
+- name: "status:in-progress"
+  color: "0E8A16"
+  description: "This issue is currently being worked on"
+
+- name: "status:closed"
+  color: "6A737D"
+  description: "This issue has been resolved or is no longer relevant"
+
+- name: "type:bug"
+  color: "D73A4A"
+  description: "Something isn't working"
+
+- name: "type:chore"
+  color: "C5DEF5"
+  description: "A task that needs to be done but isn't a bug or feature"
+
+- name: "type:documentation"
+  color: "0075CA"
+  description: "Improvements or additions to documentation"
+
+- name: "type:enhancement"
+  color: "A2EEEF"
+  description: "New feature or request"
+
+- name: "resolution:fixed"
+  color: "0E8A16"
+  description: "This has been fixed"
+
+- name: "resolution:duplicate"
+  color: "CBD5E1"
+  description: "This already exists"
+
+- name: "resolution:invalid"
+  color: "E4E669"
+  description: "This doesn't seem right"
+
+- name: "resolution:wontfix"
+  color: "FFFFFF"
+  description: "This will not be worked on"
+
+- name: "priority:critical"
+  color: "B60205"
+  description: "This is a critical issue that needs immediate attention"
+
+- name: "priority:high"
+  color: "D93F0B"
+  description: "This is a high priority issue"
+
+- name: "priority:medium"
+  color: "FBCA04"
+  description: "This is a medium priority issue"
+
+- name: "priority:low"
+  color: "0E8A16"
+  description: "This is a low priority issue"

@@ -1,0 +1,34 @@
+{
+	// ------------------------------------------------------------------------
+	// VS Code Settings
+	// ------------------------------------------------------------------------
+	"files.exclude": {
+		"**/.DS_Store": true,
+		"**/.git": true,
+		"**/*.csproj.lscache": true,
+		"**/*.csproj.user": true,
+		"**/Thumbs.db": true
+	},
+	// ------------------------------------------------------------------------
+	// AI Settings
+	// ------------------------------------------------------------------------
+	"chat.agentFilesLocations": {
+		".agents/agents": true
+	},
+	"chat.agentSkillsLocations": {
+		".agents/skills": true
+	},
+	"chat.hookFilesLocations": {
+		".agents/hooks": true
+	},
+	"chat.instructionsFilesLocations": {
+		".agents/instructions": true
+	},
+	"chat.promptFilesLocations": {
+		".agents/prompts": true
+	},
+	// ------------------------------------------------------------------------
+	// Source Control Settings
+	// ------------------------------------------------------------------------
+	"git.commitTemplate": ".vscode/commit-template.txt"
+}
