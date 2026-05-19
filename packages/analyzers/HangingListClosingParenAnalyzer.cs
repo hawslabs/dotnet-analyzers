@@ -9,7 +9,7 @@ namespace HawsLabs.Analyzers;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
-	public const string DiagnosticId = "CH0001";
+	public const string DiagnosticId = "HA0001";
 
 	private static readonly DiagnosticDescriptor Rule = new(
 		id: DiagnosticId,

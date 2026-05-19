@@ -10,8 +10,7 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 ### Added
 
 - Added a root `justfile` with build, verify, formatting, and focused test recipes, including watch mode, formatting checks, fix-up helpers, and name-based test filters for the analyzer workflow.
-
-
-### Changed
-
-- Cleaned repository guidance and VS Code workspace metadata to use HawsLabs analyzer-repo naming instead of stale CodeAnalysis project references.
+- Added VS Code workspace tasks that delegate to the root `just` recipes, plus workspace settings to open `HawsLabs.Analyzers.slnx` by default in C# Dev Kit.
+- Added `Microsoft.CodeAnalysis.PublicApiAnalyzers` to the analyzer project with baseline `PublicAPI` files.
+- Added repository guidance and README updates that standardize HawsLabs analyzer-repo naming, document cross-platform `just` installation, and explain the VS Code task workflow.
+- Added `HA0001` as the diagnostic ID used for `HangingListClosingParenAnalyzer` in the first release.

@@ -20,6 +20,7 @@ The active codebase currently centers on `packages/analyzers/HawsLabs.Analyzers.
 
 - `HawsLabs.Analyzers.slnx` — canonical solution for this repository.
 - `packages/analyzers/` — active analyzer and code-fix implementation project.
+- `justfile` — preferred shorthand for common local restore, build, test, formatting, and verification workflows.
 - `.agents/` — Copilot agent, instruction, prompt, and skill customizations for this repo.
 - `.github/` — GitHub configuration and workflows.
 - `.vscode/` — workspace tasks, launch settings, and editor configuration.
@@ -58,6 +59,7 @@ The active codebase currently centers on `packages/analyzers/HawsLabs.Analyzers.
 
 ## Testing and validation
 
+- Prefer the root `just` commands for local workflows when they cover the task: `just restore`, `just build`, `just test`, `just verify`, `just format-check`, and `just fix`.
 - Build from the repository root with `dotnet build HawsLabs.Analyzers.slnx`.
 - When analyzer or code-fix behavior changes, add or update focused tests.
 - If the repository does not yet have the right test project for a change, add the smallest useful test project instead of inventing large test infrastructure.
@@ -76,5 +78,8 @@ The active codebase currently centers on `packages/analyzers/HawsLabs.Analyzers.
 Run this from the repository root:
 
 ```text
+just build
+
+# or use the underlying .NET command directly
 dotnet build HawsLabs.Analyzers.slnx
 ```

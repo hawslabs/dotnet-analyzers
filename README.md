@@ -1,9 +1,21 @@
 # HawsLabs C# Code Analyzers
 
+## Tooling
+
+Install `just` with the package manager that matches your machine:
+
+- Windows (winget): `winget install --id Casey.Just --exact`
+- macOS or Linux (Homebrew): `brew install just`
+- Debian 13 / Ubuntu 24.04+ derivatives: `apt install just`
+- Fedora: `dnf install just`
+- Arch Linux: `pacman -S just`
+- Cargo fallback: `cargo install just`
+
 ## Development
 
 This repo includes a root `justfile` as a lightweight shortcut for common .NET workflows.
 
+- VS Code workspace tasks wrap the main `just` recipes for build, test, verify, format-check, and fix.
 - `just build` — build `HawsLabs.Analyzers.slnx`
 - `just test` — run the analyzer test suite
 - `just test-watch` — rerun tests on change while working on analyzer code
@@ -15,3 +27,16 @@ This repo includes a root `justfile` as a lightweight shortcut for common .NET w
 - `just test-name CodeFixTests` — run tests whose fully-qualified name contains a given value
 - `just test-scope HangingListClosingParen` — preferred shorthand for scoping tests to a namespace, fixture, or feature slice
 - `just test-file HangingListClosingParen` — quickly scope test runs to a fixture or folder-style namespace segment
+
+## VS Code tasks
+
+If you prefer staying inside VS Code, open the Command Palette and run `Tasks: Run Task`, then pick one of these workspace tasks:
+
+- `restore HawsLabs.Analyzers.slnx`
+- `build HawsLabs.Analyzers.slnx`
+- `test HawsLabs.Analyzers.slnx`
+- `verify HawsLabs.Analyzers.slnx`
+- `format-check HawsLabs.Analyzers.slnx`
+- `fix HawsLabs.Analyzers.slnx`
+
+The workspace also pins `HawsLabs.Analyzers.slnx` as the default solution for C# Dev Kit, so opening the repo should load the intended solution automatically.

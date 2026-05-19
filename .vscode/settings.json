@@ -13,22 +13,30 @@
 	// AI Settings
 	// ------------------------------------------------------------------------
 	"chat.agentFilesLocations": {
-		".agents/agents": true
+		".agents/agents": true,
 	},
 	"chat.agentSkillsLocations": {
-		".agents/skills": true
+		".agents/skills": true,
 	},
 	"chat.hookFilesLocations": {
-		".agents/hooks": true
+		".agents/hooks": true,
 	},
 	"chat.instructionsFilesLocations": {
-		".agents/instructions": true
+		".agents/instructions": true,
 	},
 	"chat.promptFilesLocations": {
-		".agents/prompts": true
+		".agents/prompts": true,
 	},
+	// ------------------------------------------------------------------------
+	// .NET Settings
+	// ------------------------------------------------------------------------
+	"dotnet.defaultSolution": "HawsLabs.Analyzers.slnx",
 	// ------------------------------------------------------------------------
 	// Source Control Settings
 	// ------------------------------------------------------------------------
-	"git.commitTemplate": ".vscode/commit-template.txt"
+	"github.copilot.chat.commitMessageGeneration.instructions": [
+		{
+			"file": ".agents/instructions/commit-message.instructions.md"
+		}
+	]
 }

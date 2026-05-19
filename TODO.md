@@ -2,18 +2,6 @@
 
 - [ ] Example: Add a new feature to the plan and implement it.
 
+update `.agents/instructions/changelog.instructions.md` to understand that anything in the unreleased version should not show up in changed section unless it was changed from the previous version. If a version is still pending, we should just update the original entry (only if it is unreleased still).
 
-
-Create `.agents/instructions/hawslabs-analysis-rule-docs.instructions.md` which instructs the AI how to maintain the documentation for the custom roslyn code analyzers / code fixes in this repo. Right now there is only one rule in the repo, but I want you to document how `Meziantou.Analyzer` documents their rules:
-
-- https://github.com/meziantou/Meziantou.Analyzer/tree/main/docs
-- https://github.com/meziantou/Meziantou.Analyzer/blob/main/docs/Rules/MA0001.md (but I want the rules folder to be all lowercase)
-
-I think i want the actual rules to be documented similar to this:
-https://github.com/TestableIO/System.IO.Abstractions.Analyzers/blob/develop/docs/IO0004.MD
-
-mixed with this:
-https://github.com/DotNetAnalyzers/IDisposableAnalyzers/blob/master/documentation/IDISP014.md
-
-
-I like the table at the top, Description, Motivation, How to fix violations, Code with Diagnostic, and Code with Fix sections per rule.
+For example, right now we dont have any versions, so nothing should be in changed...

@@ -4,12 +4,67 @@
 		{
 			"label": "build HawsLabs.Analyzers.slnx",
 			"type": "shell",
-			"command": "dotnet",
+			"command": "just",
 			"args": [
-				"build",
-				"HawsLabs.Analyzers.slnx"
+				"build"
 			],
-			"group": "build",
+			"detail": "Runs `just build`.",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "restore HawsLabs.Analyzers.slnx",
+			"type": "shell",
+			"command": "just",
+			"args": [
+				"restore"
+			],
+			"detail": "Runs `just restore`."
+		},
+		{
+			"label": "test HawsLabs.Analyzers.slnx",
+			"type": "shell",
+			"command": "just",
+			"args": [
+				"test"
+			],
+			"detail": "Runs `just test`.",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "verify HawsLabs.Analyzers.slnx",
+			"type": "shell",
+			"command": "just",
+			"args": [
+				"verify"
+			],
+			"detail": "Runs `just verify`.",
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "format-check HawsLabs.Analyzers.slnx",
+			"type": "shell",
+			"command": "just",
+			"args": [
+				"format-check"
+			],
+			"detail": "Runs `just format-check`.",
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "fix HawsLabs.Analyzers.slnx",
+			"type": "shell",
+			"command": "just",
+			"args": [
+				"fix"
+			],
+			"detail": "Runs `just fix`.",
 			"problemMatcher": "$msCompile"
 		}
 	]
