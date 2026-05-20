@@ -39,7 +39,7 @@ jobs:
           global-json-file: global.json
 
       - name: Setup just
-        uses: extractions/setup-just@v3
+        uses: extractions/setup-just@v4
 
       - name: Restore
         run: just ci-restore

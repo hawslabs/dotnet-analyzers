@@ -7,6 +7,8 @@ on:
       - ".github/workflows/copilot-setup-steps.yml"
       - "global.json"
       - "Directory.Packages.props"
+      - "justfile"
+      - "**/packages.lock.json"
       - "**/*.csproj"
       - "**/*.props"
       - "**/*.targets"
@@ -15,6 +17,8 @@ on:
       - ".github/workflows/copilot-setup-steps.yml"
       - "global.json"
       - "Directory.Packages.props"
+      - "justfile"
+      - "**/packages.lock.json"
       - "**/*.csproj"
       - "**/*.props"
       - "**/*.targets"
@@ -30,9 +34,13 @@ jobs:
         uses: actions/checkout@v5
 
       - name: dotnet sdk setup
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
           cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
-      - run: dotnet restore
+      - name: setup just
+        uses: extractions/setup-just@v4
+
+      - run: just ci-restore

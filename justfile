@@ -54,7 +54,7 @@ verify:
 ci: ci-restore ci-build ci-test ci-pack
 
 ci-restore:
-    dotnet restore {{ solution }}
+    dotnet restore {{ solution }} --locked-mode
 
 ci-build:
     dotnet build {{ solution }} --configuration {{ ci_configuration }} --no-restore
