@@ -1,0 +1,117 @@
+name: ci/cd
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  BUILD_CONFIGURATION: Release
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+  IS_MAIN_BRANCH_RELEASE: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+  IS_REPOSITORY_PULL_REQUEST: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+  PACKAGE_OUTPUT_PATH: .artifacts/packages
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Setup just
+        uses: extractions/setup-just@v3
+
+      - name: Restore
+        run: just ci-restore
+
+      - name: Build
+        run: just ci-build
+
+      - name: Test
+        run: just ci-test
+
+      - name: Pack
+        run: just ci-pack
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: haws-labs-analyzers
+          path: |
+            ${{ env.PACKAGE_OUTPUT_PATH }}/*.nupkg
+            ${{ env.PACKAGE_OUTPUT_PATH }}/*.snupkg
+          if-no-files-found: error
+
+      - name: Publish to GitHub Packages
+        if: env.IS_MAIN_BRANCH_RELEASE == 'true' || env.IS_REPOSITORY_PULL_REQUEST == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          test -n "${GITHUB_TOKEN:-}" || {
+            echo "GITHUB_TOKEN is required to publish to GitHub Packages." >&2
+            exit 1
+          }
+
+          dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --name github \
+            --username "${{ github.actor }}" \
+            --password "$GITHUB_TOKEN" \
+            --store-password-in-clear-text
+
+          packages=("${PACKAGE_OUTPUT_PATH}"/*.nupkg)
+          if [ ! -e "${packages[0]}" ]; then
+            echo "No .nupkg files found in ${PACKAGE_OUTPUT_PATH}." >&2
+            exit 1
+          fi
+
+          for package in "${packages[@]}"; do
+            dotnet nuget push "$package" \
+              --source github \
+              --api-key "$GITHUB_TOKEN" \
+              --skip-duplicate
+          done
+
+      - name: Publish to nuget.org
+        if: env.IS_MAIN_BRANCH_RELEASE == 'true'
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        shell: bash
+        run: |
+          test -n "${NUGET_API_KEY:-}" || {
+            echo "NUGET_API_KEY is required to publish to nuget.org." >&2
+            exit 1
+          }
+
+          packages=("${PACKAGE_OUTPUT_PATH}"/*.nupkg)
+          if [ ! -e "${packages[0]}" ]; then
+            echo "No .nupkg files found in ${PACKAGE_OUTPUT_PATH}." >&2
+            exit 1
+          fi
+
+          for package in "${packages[@]}"; do
+            dotnet nuget push "$package" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" \
+              --skip-duplicate
+          done

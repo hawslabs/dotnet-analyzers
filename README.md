@@ -40,3 +40,12 @@ If you prefer staying inside VS Code, open the Command Palette and run `Tasks: R
 - `fix HawsLabs.Analyzers.slnx`
 
 The workspace also pins `HawsLabs.Analyzers.slnx` as the default solution for C# Dev Kit, so opening the repo should load the intended solution automatically.
+
+## Publishing
+
+The `Build, test, and publish` GitHub Actions workflow restores, builds, tests, and packs `packages/analyzers/HawsLabs.Analyzers.csproj`.
+
+- Pull requests publish prerelease packages to GitHub Packages when the PR branch belongs to this repository.
+- Main branch runs publish packages to GitHub Packages and nuget.org.
+- nuget.org publishing expects `NUGET_API_KEY` to be available to the workflow.
+- GitHub Packages publishing uses the workflow `GITHUB_TOKEN`.
