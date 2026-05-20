@@ -391,6 +391,73 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 	}
 
 	[Fact]
+	public Task MovesExpressionBodiedMethodArrowToClosingParenLine() {
+		return VerifyCodeFixAsync(
+			InType(
+				"""
+				private sealed class DistributedApplication {
+					public ResourceNotificationService ResourceNotifications { get; } = new();
+				}
+
+				private sealed class ResourceNotificationService {
+					public ResourceWaitOperation WaitForResourceHealthyAsync(
+						string resourceName,
+						System.Threading.CancellationToken cancellationToken
+					) => new();
+				}
+
+				private sealed class ResourceWaitOperation {
+					public System.Threading.Tasks.Task WaitAsync(
+						TimeSpan timeout,
+						System.Threading.CancellationToken cancellationToken
+					) => System.Threading.Tasks.Task.CompletedTask;
+				}
+
+				private static System.Threading.Tasks.Task WaitForResourceHealthyAsync(
+					this DistributedApplication app,
+					string resourceName,
+					TimeSpan timeout,
+					System.Threading.CancellationToken cancellationToken = default
+				[|)|]
+					=> app.ResourceNotifications
+						.WaitForResourceHealthyAsync(resourceName, cancellationToken)
+						.WaitAsync(timeout, cancellationToken);
+				"""
+			),
+			InType(
+				"""
+				private sealed class DistributedApplication {
+					public ResourceNotificationService ResourceNotifications { get; } = new();
+				}
+
+				private sealed class ResourceNotificationService {
+					public ResourceWaitOperation WaitForResourceHealthyAsync(
+						string resourceName,
+						System.Threading.CancellationToken cancellationToken
+					) => new();
+				}
+
+				private sealed class ResourceWaitOperation {
+					public System.Threading.Tasks.Task WaitAsync(
+						TimeSpan timeout,
+						System.Threading.CancellationToken cancellationToken
+					) => System.Threading.Tasks.Task.CompletedTask;
+				}
+
+				private static System.Threading.Tasks.Task WaitForResourceHealthyAsync(
+					this DistributedApplication app,
+					string resourceName,
+					TimeSpan timeout,
+					System.Threading.CancellationToken cancellationToken = default
+				) => app.ResourceNotifications
+						.WaitForResourceHealthyAsync(resourceName, cancellationToken)
+						.WaitAsync(timeout, cancellationToken);
+				"""
+			)
+		);
+	}
+
+	[Fact]
 	public Task MovesWhileConditionClosingParenToItsOwnLine() {
 		return VerifyCodeFixAsync(
 			InMethodBody(

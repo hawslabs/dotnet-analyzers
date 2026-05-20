@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ### Fixed
 
+- Fixed HA0001 so expression-bodied members with hanging parameter lists report and fix stranded `=>` tokens by keeping `) =>` on one line.
 - Fixed the HA0001 code fix so hanging calls that wrap multiline raw string literals can reindent the raw string while keeping its value unchanged, including already-separated closing parens and grouped trailing parens inside the raw string.
 - Fixed `just self-fix` so HA0001 code fixes run across the solution instead of only the analyzer project.
 - Fixed NuGet package metadata so analyzer packing uses the MIT license expression without also declaring a license file.

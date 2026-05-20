@@ -12,7 +12,7 @@ namespace HawsLabs.Analyzers;
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(HangingListClosingParenCodeFixProvider))]
 [Shared]
 public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
-	private const string Title = "Put closing parenthesis on its own line";
+	private const string Title = "Format hanging-list closing parenthesis";
 
 	public override ImmutableArray<string> FixableDiagnosticIds =>
 		ImmutableArray.Create(HangingListClosingParenAnalyzer.DiagnosticId);
@@ -76,6 +76,10 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		var actualPrefix = text.ToString(actualPrefixSpan);
 		var lineBreak = GetLineBreak(text, closeLine);
 
+		if (TryFixExpressionBodyArrowLine(text, closeParen, out var fixedExpressionBodyText)) {
+			return document.WithText(fixedExpressionBodyText);
+		}
+
 		if (
 			TryFixRawStringLiteralClosingLine(
 				text,
@@ -114,6 +118,39 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		);
 
 		return document.WithText(fixedText);
+	}
+
+	private static bool TryFixExpressionBodyArrowLine(
+		SourceText text,
+		SyntaxToken closeParen,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (
+			closeParen.Parent is not ParameterListSyntax parameterList
+			|| !TryGetExpressionBody(parameterList, out var expressionBody)
+			|| expressionBody.ArrowToken.IsMissing
+		) {
+			return false;
+		}
+
+		var closeLine = text.Lines.GetLineFromPosition(closeParen.SpanStart);
+		var arrowLine = text.Lines.GetLineFromPosition(expressionBody.ArrowToken.SpanStart);
+
+		if (closeLine.LineNumber == arrowLine.LineNumber) {
+			return false;
+		}
+
+		var gapSpan = TextSpan.FromBounds(closeParen.Span.End, expressionBody.ArrowToken.SpanStart);
+		var gapText = text.ToString(gapSpan);
+
+		if (!gapText.All(static character => char.IsWhiteSpace(character))) {
+			return false;
+		}
+
+		fixedText = text.Replace(gapSpan, " ");
+		return true;
 	}
 
 	private static bool TryFixRawStringLiteralClosingLine(
@@ -455,5 +492,21 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		return GetLineBreak(text);
+	}
+
+	private static bool TryGetExpressionBody(
+		ParameterListSyntax node,
+		out ArrowExpressionClauseSyntax expressionBody
+	) {
+		expressionBody = node.Parent switch {
+			ConstructorDeclarationSyntax { ExpressionBody: { } value } => value,
+			ConversionOperatorDeclarationSyntax { ExpressionBody: { } value } => value,
+			LocalFunctionStatementSyntax { ExpressionBody: { } value } => value,
+			MethodDeclarationSyntax { ExpressionBody: { } value } => value,
+			OperatorDeclarationSyntax { ExpressionBody: { } value } => value,
+			_ => null!,
+		};
+
+		return expressionBody is not null;
 	}
 }
