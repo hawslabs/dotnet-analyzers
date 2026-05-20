@@ -1,0 +1,131 @@
+<Project>
+
+  <!--
+    ============================================================
+    VERSIONING SCHEME
+    ============================================================
+    If MajorVersion is set:
+      {Major}.{yyMM}.{MinutesSinceStartOfMonth}[-dev.{BuildId}]
+
+    If MajorVersion is not set:
+      {yy}.{Mdd}.{HHmmss}[-dev.{BuildId}]
+
+    Examples:
+      1.2602.12345           (major-based release build)
+      1.2602.12345-dev.789   (major-based dev build)
+      26.413.154512          (fallback release build)
+      26.413.154512-dev.789  (fallback dev build)
+
+    InformationalVersion includes commit SHA:
+      1.2602.12345+a1b2c3d4e5
+    ============================================================
+  -->
+
+  <!-- Defaults -->
+  <PropertyGroup>
+    <BuildId Condition="'$(BuildId)' == ''">0</BuildId>
+    <BranchName Condition="'$(BranchName)' == ''">local</BranchName>
+    <CommitSha Condition="'$(CommitSha)' == ''">unknown</CommitSha>
+  </PropertyGroup>
+
+  <!-- Azure DevOps -->
+  <PropertyGroup>
+    <BuildId Condition="'$(BUILD_BUILDID)' != ''">$(BUILD_BUILDID)</BuildId>
+    <BranchName Condition="'$(BUILD_SOURCEBRANCH)' != ''">$(BUILD_SOURCEBRANCH)</BranchName>
+    <CommitSha Condition="'$(BUILD_SOURCEVERSION)' != ''">$(BUILD_SOURCEVERSION)</CommitSha>
+  </PropertyGroup>
+
+  <!-- GitHub Actions -->
+  <PropertyGroup>
+    <BuildId Condition="'$(GITHUB_RUN_NUMBER)' != ''">$(GITHUB_RUN_NUMBER)</BuildId>
+    <BranchName Condition="'$(GITHUB_REF)' != ''">$(GITHUB_REF)</BranchName>
+    <CommitSha Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</CommitSha>
+  </PropertyGroup>
+
+  <!-- Auto-detect RepositoryUrl from CI when not set -->
+  <PropertyGroup Condition="'$(RepositoryUrl)' == ''">
+    <RepositoryUrl Condition="'$(BUILD_REPOSITORY_URI)' != ''">$(BUILD_REPOSITORY_URI)</RepositoryUrl>
+    <RepositoryUrl Condition="'$(GITHUB_SERVER_URL)' != '' and '$(GITHUB_REPOSITORY)' != ''">$(GITHUB_SERVER_URL)/$(GITHUB_REPOSITORY)</RepositoryUrl>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(PackageProjectUrl)' == '' and '$(RepositoryUrl)' != ''">
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <_RawVersionTimestamp Condition="'$(VersionTimestamp)' != ''">$(VersionTimestamp)</_RawVersionTimestamp>
+    <_RawVersionTimestamp Condition="'$(_RawVersionTimestamp)' == ''">$([System.DateTimeOffset]::UtcNow.ToString('o'))</_RawVersionTimestamp>
+    <VersionTimestamp>$([System.DateTimeOffset]::Parse('$(_RawVersionTimestamp)').ToUniversalTime().ToString('o'))</VersionTimestamp>
+  </PropertyGroup>
+
+  <!-- Compute calendar-based version components -->
+  <PropertyGroup>
+    <_Now>$(VersionTimestamp)</_Now>
+    <_YearShort>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("yy"))</_YearShort>
+    <_YearLong>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("yyyy"))</_YearLong>
+    <_YYMM>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("yyMM"))</_YYMM>
+    <_MonthDay>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("Mdd"))</_MonthDay>
+    <_HourMinute>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("HHmm"))</_HourMinute>
+    <_HourMinuteSecond>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("HHmmss"))</_HourMinuteSecond>
+    <_Day>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().Day)</_Day>
+    <_Hour>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().Hour)</_Hour>
+    <_Minute>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().Minute)</_Minute>
+    <_Second>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("ss"))</_Second>
+    <_MinutesSinceStartOfMonth>$([MSBuild]::Add($([MSBuild]::Add($([MSBuild]::Multiply($([MSBuild]::Subtract($(_Day), 1)), 1440)), $([MSBuild]::Multiply($(_Hour), 60)))), $(_Minute)))</_MinutesSinceStartOfMonth>
+    <_UsesMajorVersion Condition="'$(MajorVersion)' != ''">true</_UsesMajorVersion>
+    <_UsesMajorVersion Condition="'$(_UsesMajorVersion)' == ''">false</_UsesMajorVersion>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(VersioningEnabled)' == 'true' and '@(ProjectReference)' != ''">
+    <ProjectReference Update="@(ProjectReference)">
+      <AdditionalProperties>%(ProjectReference.AdditionalProperties);VersionTimestamp=$(VersionTimestamp)</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- Copyright (in targets so $(Company) reflects any consumer override) -->
+  <PropertyGroup Condition="'$(CompanyMetadataEnabled)' == 'true' and '$(Copyright)' == ''">
+    <!-- Deterministic copyright for CI using SourceRevisionTimestamp -->
+    <_CopyrightYear Condition="'$(SourceRevisionTimestamp)' != ''">$([System.DateTime]::Parse('$(SourceRevisionTimestamp)').ToString('yyyy'))</_CopyrightYear>
+    <_CopyrightYear Condition="'$(_CopyrightYear)' == ''">$([System.DateTime]::UtcNow.ToString('yyyy'))</_CopyrightYear>
+    <Copyright>Copyright © $(Company) $(_CopyrightYear)</Copyright>
+  </PropertyGroup>
+
+  <!-- Release vs dev branch detection -->
+  <PropertyGroup>
+    <_IsRelease Condition="'$(BranchName)' == 'main' Or '$(BranchName)' == 'refs/heads/main'">true</_IsRelease>
+    <_IsRelease Condition="'$(BranchName)' == 'master' Or '$(BranchName)' == 'refs/heads/master'">true</_IsRelease>
+    <_IsRelease Condition="'$(_IsRelease)' == ''">false</_IsRelease>
+    <_Prerelease Condition="'$(_IsRelease)' != 'true'">-ci.$(BuildId)</_Prerelease>
+    <_BuildIdIsNumeric>$([System.Text.RegularExpressions.Regex]::IsMatch('$(BuildId)', '^\d+$'))</_BuildIdIsNumeric>
+    <_CanUseBuildIdInFallbackFileVersion Condition="'$(_BuildIdIsNumeric)' == 'true' and $([System.Int32]::Parse('$(BuildId)')) &lt;= 65535">true</_CanUseBuildIdInFallbackFileVersion>
+    <_FallbackAssemblyVersion>$(_YearLong).$(_MonthDay).$(_HourMinute).$(_Second)</_FallbackAssemblyVersion>
+    <_FallbackFileVersion>$(_FallbackAssemblyVersion)</_FallbackFileVersion>
+    <_FallbackFileVersion Condition="'$(_IsRelease)' != 'true' and '$(_CanUseBuildIdInFallbackFileVersion)' == 'true'">$(_YearLong).$(_MonthDay).$(_HourMinute).$(BuildId)</_FallbackFileVersion>
+  </PropertyGroup>
+
+  <!-- Assemble version strings -->
+  <PropertyGroup Condition="'$(VersioningEnabled)' == 'true' and '$(_UsesMajorVersion)' == 'true'">
+    <Version>$(MajorVersion).$(_YYMM).$(_MinutesSinceStartOfMonth)$(_Prerelease)</Version>
+    <PackageVersion>$(Version)</PackageVersion>
+    <!-- Keep AssemblyVersion stable to avoid binding redirect churn -->
+    <AssemblyVersion>$(MajorVersion).0.0.0</AssemblyVersion>
+    <FileVersion>$(MajorVersion).$(_YYMM).$(_MinutesSinceStartOfMonth).$(BuildId)</FileVersion>
+    <InformationalVersion>$(Version)+$(CommitSha)</InformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(VersioningEnabled)' == 'true' and '$(_UsesMajorVersion)' != 'true'">
+    <Version>$(_YearShort).$(_MonthDay).$(_HourMinuteSecond)$(_Prerelease)</Version>
+    <PackageVersion>$(Version)</PackageVersion>
+    <AssemblyVersion>$(_FallbackAssemblyVersion)</AssemblyVersion>
+    <FileVersion>$(_FallbackFileVersion)</FileVersion>
+    <InformationalVersion>$(Version)+$(CommitSha)</InformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GenerateAssemblyVersionAttribute>true</GenerateAssemblyVersionAttribute>
+    <GenerateAssemblyFileVersionAttribute>true</GenerateAssemblyFileVersionAttribute>
+    <GenerateAssemblyInformationalVersionAttribute>true</GenerateAssemblyInformationalVersionAttribute>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+</Project>

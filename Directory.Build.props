@@ -36,34 +36,4 @@
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 	</PropertyGroup>
-
-	<PropertyGroup>
-		<!--
-		Versioning:
-		- VersionPrefix defines the local build version and active release line.
-		- GitHub Actions keeps VersionPrefix's major.minor and uses
-		  GITHUB_RUN_NUMBER as the patch so CI package versions are monotonic
-		  across pushes, pull requests, and manual runs.
-		- Pull request builds append -pr.<number>.<attempt> using the PR ref and
-		  GITHUB_RUN_ATTEMPT so reruns produce unique prerelease packages.
-		- InformationalVersion appends the short GitHub SHA as SemVer build
-		  metadata for source traceability without changing package precedence.
-		-->
-		<VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-		<VersionMajorMinor Condition="'$(VersionMajorMinor)' == ''">$([System.Text.RegularExpressions.Regex]::Match('$(VersionPrefix)', '^[0-9]+\.[0-9]+').Value)</VersionMajorMinor>
-		<VersionPrefix Condition="'$(GITHUB_ACTIONS)' == 'true' and '$(GITHUB_RUN_NUMBER)' != '' and '$(VersionMajorMinor)' != ''">$(VersionMajorMinor).$(GITHUB_RUN_NUMBER)</VersionPrefix>
-
-		<GitHubPullRequestNumber Condition="'$(GitHubPullRequestNumber)' == '' and '$(GITHUB_REF)' != '' and $([System.Text.RegularExpressions.Regex]::IsMatch('$(GITHUB_REF)', '^refs/pull/[0-9]+/(merge|head)$'))">$([System.Text.RegularExpressions.Regex]::Replace('$(GITHUB_REF)', '^refs/pull/([0-9]+)/(merge|head)$', '$1'))</GitHubPullRequestNumber>
-		<GitHubRunAttempt Condition="'$(GitHubRunAttempt)' == '' and '$(GITHUB_RUN_ATTEMPT)' != ''">$(GITHUB_RUN_ATTEMPT)</GitHubRunAttempt>
-		<GitHubRunAttempt Condition="'$(GitHubRunAttempt)' == ''">1</GitHubRunAttempt>
-		<VersionSuffix Condition="'$(VersionSuffix)' == '' and '$(GITHUB_EVENT_NAME)' == 'pull_request' and '$(GitHubPullRequestNumber)' != ''">pr.$(GitHubPullRequestNumber).$(GitHubRunAttempt)</VersionSuffix>
-
-		<PackageVersion Condition="'$(PackageVersion)' == '' and '$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
-		<PackageVersion Condition="'$(PackageVersion)' == ''">$(VersionPrefix)</PackageVersion>
-		<AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(VersionPrefix).0</AssemblyVersion>
-		<FileVersion Condition="'$(FileVersion)' == ''">$(VersionPrefix).0</FileVersion>
-		<GitHubShortSha Condition="'$(GitHubShortSha)' == '' and '$(GITHUB_SHA)' != ''">$([System.Text.RegularExpressions.Regex]::Replace('$(GITHUB_SHA)', '^(.{12}).*$', '$1'))</GitHubShortSha>
-		<InformationalVersion Condition="'$(InformationalVersion)' == '' and '$(GitHubShortSha)' != ''">$(PackageVersion)+$(GitHubShortSha)</InformationalVersion>
-		<InformationalVersion Condition="'$(InformationalVersion)' == ''">$(PackageVersion)</InformationalVersion>
-	</PropertyGroup>
 </Project>
