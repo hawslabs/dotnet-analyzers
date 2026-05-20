@@ -30,7 +30,6 @@
 		<PackageTags>HawsLabs;Roslyn;Analyzer;Analyzers;CodeAnalysis;CSharp</PackageTags>
 		<PackageProjectUrl>https://github.com/HawsLabs/dotnet-analyzers</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<RepositoryType>git</RepositoryType>

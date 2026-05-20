@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed NuGet package metadata so analyzer packing uses the MIT license expression without also declaring a license file.
+
 ### Added
 
 - Added a GitHub Actions workflow that builds, tests, packs, and publishes analyzer packages to GitHub Packages on main and repository pull requests, plus nuget.org on main.
