@@ -18,6 +18,26 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
+		<Company>HawsLabs</Company>
+		<Authors>HawsLabs</Authors>
+		<Product>HawsLabs Analyzers</Product>
+		<Description>Roslyn analyzers and code fixes for HawsLabs C# projects.</Description>
+		<Copyright>Copyright (c) HawsLabs</Copyright>
+    	<NeutralLanguage>en</NeutralLanguage>
+    	<DefaultLanguage>en</DefaultLanguage>
+		<PackageId>$(AssemblyName)</PackageId>
+		<PackageTags>HawsLabs;Roslyn;Analyzer;Analyzers;CodeAnalysis;CSharp</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/ChristopherHaws/dotnet-analyzers</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/ChristopherHaws/dotnet-analyzers</RepositoryUrl>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+	</PropertyGroup>
+
+	<PropertyGroup>
 		<!--
 		Versioning:
 		- VersionPrefix defines the local build version and active release line.
@@ -45,23 +65,5 @@
 		<GitHubShortSha Condition="'$(GitHubShortSha)' == '' and '$(GITHUB_SHA)' != ''">$([System.Text.RegularExpressions.Regex]::Replace('$(GITHUB_SHA)', '^(.{12}).*$', '$1'))</GitHubShortSha>
 		<InformationalVersion Condition="'$(InformationalVersion)' == '' and '$(GitHubShortSha)' != ''">$(PackageVersion)+$(GitHubShortSha)</InformationalVersion>
 		<InformationalVersion Condition="'$(InformationalVersion)' == ''">$(PackageVersion)</InformationalVersion>
-	</PropertyGroup>
-
-	<PropertyGroup>
-		<Company>HawsLabs</Company>
-		<Authors>HawsLabs</Authors>
-		<Product>HawsLabs Analyzers</Product>
-		<Description>Roslyn analyzers and code fixes for HawsLabs C# projects.</Description>
-		<Copyright>Copyright (c) HawsLabs</Copyright>
-		<PackageId>$(AssemblyName)</PackageId>
-		<PackageTags>HawsLabs;Roslyn;Analyzer;Analyzers;CodeAnalysis;CSharp</PackageTags>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<PackageProjectUrl>https://github.com/ChristopherHaws/dotnet-analyzers</PackageProjectUrl>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-		<RepositoryType>git</RepositoryType>
-		<RepositoryUrl>https://github.com/ChristopherHaws/dotnet-analyzers</RepositoryUrl>
-		<PublishRepositoryUrl>true</PublishRepositoryUrl>
-		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 	</PropertyGroup>
 </Project>
