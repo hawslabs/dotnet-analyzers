@@ -26,6 +26,7 @@
     <BuildId Condition="'$(BuildId)' == ''">0</BuildId>
     <BranchName Condition="'$(BranchName)' == ''">local</BranchName>
     <CommitSha Condition="'$(CommitSha)' == ''">unknown</CommitSha>
+	<PrereleaseSlug Condition="'$(PrereleaseSlug)' == ''">ci</PrereleaseSlug>
   </PropertyGroup>
 
   <!-- Azure DevOps -->
@@ -63,7 +64,7 @@
     <_Now>$(VersionTimestamp)</_Now>
     <_YearShort>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("yy"))</_YearShort>
     <_YearLong>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("yyyy"))</_YearLong>
-    <_YYMM>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("yyMM"))</_YYMM>
+    <_YearMonth>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("yyMM"))</_YearMonth>
     <_MonthDay>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("Mdd"))</_MonthDay>
     <_HourMinute>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("HHmm"))</_HourMinute>
     <_HourMinuteSecond>$([System.DateTimeOffset]::Parse('$(_Now)').ToUniversalTime().ToString("HHmmss"))</_HourMinuteSecond>
@@ -76,7 +77,7 @@
     <_UsesMajorVersion Condition="'$(_UsesMajorVersion)' == ''">false</_UsesMajorVersion>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(VersioningEnabled)' == 'true' and '@(ProjectReference)' != ''">
+  <ItemGroup Condition="'@(ProjectReference)' != ''">
     <ProjectReference Update="@(ProjectReference)">
       <AdditionalProperties>%(ProjectReference.AdditionalProperties);VersionTimestamp=$(VersionTimestamp)</AdditionalProperties>
     </ProjectReference>
@@ -86,7 +87,7 @@
   <PropertyGroup Condition="'$(CompanyMetadataEnabled)' == 'true' and '$(Copyright)' == ''">
     <!-- Deterministic copyright for CI using SourceRevisionTimestamp -->
     <_CopyrightYear Condition="'$(SourceRevisionTimestamp)' != ''">$([System.DateTime]::Parse('$(SourceRevisionTimestamp)').ToString('yyyy'))</_CopyrightYear>
-    <_CopyrightYear Condition="'$(_CopyrightYear)' == ''">$([System.DateTime]::UtcNow.ToString('yyyy'))</_CopyrightYear>
+    <_CopyrightYear Condition="'$(_CopyrightYear)' == ''">$(_YearLong)</_CopyrightYear>
     <Copyright>Copyright © $(Company) $(_CopyrightYear)</Copyright>
   </PropertyGroup>
 
@@ -95,7 +96,7 @@
     <_IsRelease Condition="'$(BranchName)' == 'main' Or '$(BranchName)' == 'refs/heads/main'">true</_IsRelease>
     <_IsRelease Condition="'$(BranchName)' == 'master' Or '$(BranchName)' == 'refs/heads/master'">true</_IsRelease>
     <_IsRelease Condition="'$(_IsRelease)' == ''">false</_IsRelease>
-    <_Prerelease Condition="'$(_IsRelease)' != 'true'">-ci.$(BuildId)</_Prerelease>
+    <_Prerelease Condition="'$(_IsRelease)' != 'true'">-$(PrereleaseSlug).$(BuildId)</_Prerelease>
     <_BuildIdIsNumeric>$([System.Text.RegularExpressions.Regex]::IsMatch('$(BuildId)', '^\d+$'))</_BuildIdIsNumeric>
     <_CanUseBuildIdInFallbackFileVersion Condition="'$(_BuildIdIsNumeric)' == 'true' and $([System.Int32]::Parse('$(BuildId)')) &lt;= 65535">true</_CanUseBuildIdInFallbackFileVersion>
     <_FallbackAssemblyVersion>$(_YearLong).$(_MonthDay).$(_HourMinute).$(_Second)</_FallbackAssemblyVersion>
@@ -104,16 +105,16 @@
   </PropertyGroup>
 
   <!-- Assemble version strings -->
-  <PropertyGroup Condition="'$(VersioningEnabled)' == 'true' and '$(_UsesMajorVersion)' == 'true'">
-    <Version>$(MajorVersion).$(_YYMM).$(_MinutesSinceStartOfMonth)$(_Prerelease)</Version>
+  <PropertyGroup Condition="'$(_UsesMajorVersion)' == 'true'">
+    <Version>$(MajorVersion).$(_YearMonth).$(_MinutesSinceStartOfMonth)$(_Prerelease)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <!-- Keep AssemblyVersion stable to avoid binding redirect churn -->
     <AssemblyVersion>$(MajorVersion).0.0.0</AssemblyVersion>
-    <FileVersion>$(MajorVersion).$(_YYMM).$(_MinutesSinceStartOfMonth).$(BuildId)</FileVersion>
+    <FileVersion>$(MajorVersion).$(_YearMonth).$(_MinutesSinceStartOfMonth).$(BuildId)</FileVersion>
     <InformationalVersion>$(Version)+$(CommitSha)</InformationalVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(VersioningEnabled)' == 'true' and '$(_UsesMajorVersion)' != 'true'">
+  <PropertyGroup Condition="'$(_UsesMajorVersion)' != 'true'">
     <Version>$(_YearShort).$(_MonthDay).$(_HourMinuteSecond)$(_Prerelease)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <AssemblyVersion>$(_FallbackAssemblyVersion)</AssemblyVersion>

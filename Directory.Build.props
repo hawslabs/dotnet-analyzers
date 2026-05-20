@@ -27,12 +27,13 @@
     	<DefaultLanguage>en</DefaultLanguage>
 		<PackageId>$(AssemblyName)</PackageId>
 		<PackageTags>HawsLabs;Roslyn;Analyzer;Analyzers;CodeAnalysis;CSharp</PackageTags>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<PackageProjectUrl>https://github.com/ChristopherHaws/dotnet-analyzers</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/HawsLabs/dotnet-analyzers</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<RepositoryType>git</RepositoryType>
-		<RepositoryUrl>https://github.com/ChristopherHaws/dotnet-analyzers</RepositoryUrl>
+		<RepositoryUrl>https://github.com/HawsLabs/dotnet-analyzers</RepositoryUrl>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 	</PropertyGroup>
