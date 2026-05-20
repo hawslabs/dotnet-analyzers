@@ -36,4 +36,22 @@ public abstract class CodeFixTestFixture<TAnalyzer, TCodeFix> : AnalyzerTestFixt
 
 		return test.RunAsync();
 	}
+
+	protected static Task VerifyCodeFixAsync(
+		string source,
+		string fixedSource,
+		MarkupMode markupMode,
+		params DiagnosticResult[] expectedDiagnostics
+	) {
+		var test = new CSharpCodeFixTest<TAnalyzer, TCodeFix, DefaultVerifier> {
+			TestCode = source,
+			FixedCode = fixedSource,
+		};
+
+		test.TestState.MarkupHandling = markupMode;
+		test.FixedState.MarkupHandling = markupMode;
+		test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
+
+		return test.RunAsync();
+	}
 }

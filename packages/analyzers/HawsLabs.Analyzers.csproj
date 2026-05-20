@@ -27,10 +27,6 @@
     <PackageReference Include="System.Composition.AttributedModel" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(RunSelfAnalyzer)' == 'true' and Exists('$(SelfAnalyzerPath)')">
-    <Analyzer Include="$(SelfAnalyzerPath)" />
-  </ItemGroup>
-
   <ItemGroup>
     <None Include="$(TargetPath)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="$(TargetDir)$(AssemblyName).pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />

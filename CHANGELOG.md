@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ### Fixed
 
+- Fixed the HA0001 code fix so hanging calls that wrap multiline raw string literals move the closing parenthesis to its own line and keep the raw string value unchanged.
+- Fixed `just self-fix` so HA0001 code fixes run across the solution instead of only the analyzer project.
 - Fixed NuGet package metadata so analyzer packing uses the MIT license expression without also declaring a license file.
 
 ### Added

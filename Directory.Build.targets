@@ -129,4 +129,8 @@
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(RunSelfAnalyzer)' == 'true' and '$(SelfAnalyzerPath)' != '' and Exists('$(SelfAnalyzerPath)')">
+    <Analyzer Include="$(SelfAnalyzerPath)" />
+  </ItemGroup>
+
 </Project>

@@ -4,48 +4,174 @@ namespace HawsLabs.Analyzers.Tests.HangingListClosingParen;
 
 public sealed class HangingListClosingParenCodeFixTests : HangingListClosingParenTestFixture {
 	[Fact]
-	public Task MovesArgumentListClosingParenToItsOwnLine() {
+	public Task FormatsArgumentListWrappingRawStringLiteral() {
 		return VerifyCodeFixAsync(
-			InMethodBody(
-				"""
+			""""
+using System.Threading.Tasks;
+
+internal static class TestCode {
+	private static Task VerifyAnalyzerAsync(string source) {
+		return Task.CompletedTask;
+	}
+
+	private static string InMethodBody(string body) {
+		return body;
+	}
+
+	public static Task Test() {
+		return VerifyAnalyzerAsync(InMethodBody(
+			"""
 CallTarget(
 	1,
-	2[|)|];
-"""),
-			InMethodBody(
-				"""
-CallTarget(
-	1,
-	2
-);
-"""));
+	2);
+"""[|)|]);
+	}
+}
+"""",
+			""""
+			using System.Threading.Tasks;
+
+			internal static class TestCode {
+				private static Task VerifyAnalyzerAsync(string source) {
+					return Task.CompletedTask;
+				}
+
+				private static string InMethodBody(string body) {
+					return body;
+				}
+
+				public static Task Test() {
+					return VerifyAnalyzerAsync(InMethodBody(
+						"""
+						CallTarget(
+							1,
+							2);
+						"""
+					));
+				}
+			}
+			""""
+		);
 	}
 
 	[Fact]
-	public Task MovesParameterListClosingParenToItsOwnLine() {
+	public Task FormatsArgumentListWrappingSingleLineRawStringLiteral() {
 		return VerifyCodeFixAsync(
-			InType(
-				"""
-private static void Test(
-	int first,
-	int second[|)|] {
+			""""
+using System.Threading.Tasks;
+
+internal static class TestCode {
+	private static Task VerifyAnalyzerAsync(string source) {
+		return Task.CompletedTask;
+	}
+
+	private static string InMethodBody(string body) {
+		return body;
+	}
+
+	public static Task Test() {
+		return VerifyAnalyzerAsync(InMethodBody(
+			"""
+CallTarget(1, 2);
+"""[|)|]);
+	}
 }
-"""),
-			InType(
-				"""
-private static void Test(
-	int first,
-	int second
-) {
-}
-"""));
+"""",
+			""""
+			using System.Threading.Tasks;
+
+			internal static class TestCode {
+				private static Task VerifyAnalyzerAsync(string source) {
+					return Task.CompletedTask;
+				}
+
+				private static string InMethodBody(string body) {
+					return body;
+				}
+
+				public static Task Test() {
+					return VerifyAnalyzerAsync(InMethodBody(
+						"""
+						CallTarget(1, 2);
+						"""
+					));
+				}
+			}
+			""""
+		);
 	}
 
 	[Fact]
-	public Task MovesWhileConditionClosingParenToItsOwnLine() {
+	public Task FormatsParameterListWrappingRawStringLiteral() {
 		return VerifyCodeFixAsync(
-			InMethodBody(
-				"""
+			""""
+using System.Threading.Tasks;
+
+internal static class TestCode {
+	private static Task VerifyAnalyzerAsync(string source) {
+		return Task.CompletedTask;
+	}
+
+	private static string InType(string members) {
+		return members;
+	}
+
+	public static Task Test() {
+		return VerifyAnalyzerAsync(InType(
+			"""
+private static void Test(
+	int first,
+	int second) {
+}
+"""[|)|]);
+	}
+}
+"""",
+			""""
+			using System.Threading.Tasks;
+
+			internal static class TestCode {
+				private static Task VerifyAnalyzerAsync(string source) {
+					return Task.CompletedTask;
+				}
+
+				private static string InType(string members) {
+					return members;
+				}
+
+				public static Task Test() {
+					return VerifyAnalyzerAsync(InType(
+						"""
+						private static void Test(
+							int first,
+							int second) {
+						}
+						"""
+					));
+				}
+			}
+			""""
+		);
+	}
+
+	[Fact]
+	public Task FormatsWhileConditionWrappingRawStringLiteralWithDiagnosticMarkup() {
+		return VerifyCodeFixWithoutMarkupAsync(
+			""""
+using System.Threading.Tasks;
+
+internal static class TestCode {
+	private static Task VerifyAnalyzerAsync(string source) {
+		return Task.CompletedTask;
+	}
+
+	private static string InMethodBody(string body) {
+		return body;
+	}
+
+	public static Task Test() {
+		return VerifyAnalyzerAsync(InMethodBody(
+			"""
 var lineText = " ";
 var index = 0;
 
@@ -54,19 +180,115 @@ while (
 	&& (lineText[index] == ' ' || lineText[index] == '\t')[|)|] {
 	index++;
 }
-"""),
+"""));
+	}
+}
+"""",
+			""""
+using System.Threading.Tasks;
+
+internal static class TestCode {
+	private static Task VerifyAnalyzerAsync(string source) {
+		return Task.CompletedTask;
+	}
+
+	private static string InMethodBody(string body) {
+		return body;
+	}
+
+	public static Task Test() {
+		return VerifyAnalyzerAsync(InMethodBody(
+			"""
+			var lineText = " ";
+			var index = 0;
+
+			while (
+				index < lineText.Length
+				&& (lineText[index] == ' ' || lineText[index] == '\t')[|)|] {
+				index++;
+			}
+			"""
+		));
+	}
+}
+"""",
+			Diagnostic().WithSpan(23, 4, 23, 5)
+		);
+	}
+
+	[Fact]
+	public Task MovesArgumentListClosingParenToItsOwnLine() {
+		return VerifyCodeFixAsync(
 			InMethodBody(
 				"""
-var lineText = " ";
-var index = 0;
+				CallTarget(
+					1,
+					2[|)|];
+				"""
+			),
+			InMethodBody(
+				"""
+				CallTarget(
+					1,
+					2
+				);
+				"""
+			)
+		);
+	}
 
-while (
-	index < lineText.Length
-	&& (lineText[index] == ' ' || lineText[index] == '\t')
-) {
-	index++;
-}
-"""));
+	[Fact]
+	public Task MovesParameterListClosingParenToItsOwnLine() {
+		return VerifyCodeFixAsync(
+			InType(
+				"""
+				private static void Test(
+					int first,
+					int second[|)|] {
+				}
+				"""
+			),
+			InType(
+				"""
+				private static void Test(
+					int first,
+					int second
+				) {
+				}
+				"""
+			)
+		);
+	}
+
+	[Fact]
+	public Task MovesWhileConditionClosingParenToItsOwnLine() {
+		return VerifyCodeFixAsync(
+			InMethodBody(
+				"""
+				var lineText = " ";
+				var index = 0;
+
+				while (
+					index < lineText.Length
+					&& (lineText[index] == ' ' || lineText[index] == '\t')[|)|] {
+					index++;
+				}
+				"""
+			),
+			InMethodBody(
+				"""
+				var lineText = " ";
+				var index = 0;
+
+				while (
+					index < lineText.Length
+					&& (lineText[index] == ' ' || lineText[index] == '\t')
+				) {
+					index++;
+				}
+				"""
+			)
+		);
 	}
 
 	[Fact]
@@ -74,17 +296,20 @@ while (
 		return VerifyCodeFixAsync(
 			InMethodBody(
 				"""
-CallTarget(
-	1,
-	2
-		[|)|];
-"""),
+				CallTarget(
+					1,
+					2
+						[|)|];
+				"""
+			),
 			InMethodBody(
 				"""
-CallTarget(
-	1,
-	2
-);
-"""));
+				CallTarget(
+					1,
+					2
+				);
+				"""
+			)
+		);
 	}
 }

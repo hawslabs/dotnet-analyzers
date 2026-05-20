@@ -12,7 +12,8 @@ private static void CallTarget(int first, int second) {
 private static void Test() {
 {{FormatBlock(body, 1)}}
 }
-""");
+"""
+		);
 
 		return InType(members);
 	}
@@ -32,7 +33,8 @@ internal static class TestCode {
 			Environment.NewLine + Environment.NewLine,
 			blocks
 				.Where(static block => !string.IsNullOrWhiteSpace(block))
-				.Select(static block => block!.ReplaceLineEndings(Environment.NewLine).Trim('\r', '\n')));
+				.Select(static block => block!.ReplaceLineEndings(Environment.NewLine).Trim('\r', '\n'))
+		);
 	}
 
 	private static string FormatBlock(string text, int indentLevel) {

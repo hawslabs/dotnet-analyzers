@@ -24,7 +24,7 @@ This repo includes a root `justfile` as a lightweight shortcut for common .NET w
 - `just format-check` — fail fast if formatting drift would make the build unhappy
 - `just fix` — run formatting fixes, then build the solution
 - `just self-analyze` — build the analyzer, then run it against `packages/analyzers/HawsLabs.Analyzers.csproj`
-- `just self-fix` — build the analyzer, then run its HA0001 code fix against the analyzer project
+- `just self-fix` — build the analyzer, then run its HA0001 code fix against the solution
 - `just test-filter HangingListClosingParen` — run a focused test subset with `dotnet test --filter`
 - `just test-name CodeFixTests` — run tests whose fully-qualified name contains a given value
 - `just test-scope HangingListClosingParen` — preferred shorthand for scoping tests to a namespace, fixture, or feature slice
