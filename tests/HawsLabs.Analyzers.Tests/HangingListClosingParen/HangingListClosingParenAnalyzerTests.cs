@@ -65,12 +65,12 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 	public Task DoesNotReportDiagnosticForCorrectlyFormattedHangingArgumentList() {
 		return VerifyAnalyzerAsync(InMethodBody(
 			"""
-	CallTarget(
-		1,
-		2
-	);
-	"""
-));
+			CallTarget(
+				1,
+				2
+			);
+			"""
+		));
 	}
 
 	[Fact]
@@ -78,11 +78,11 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 		return VerifyAnalyzerAsync(
 			InMethodBody(
 				"""
-CallWithFactory(() => Create(
-	1,
-	2
-));
-""",
+				CallWithFactory(() => Create(
+					1,
+					2
+				));
+				""",
 				"""
 				private static void CallWithFactory(Func<int> factory) {
 				}

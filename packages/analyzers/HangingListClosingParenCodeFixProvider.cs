@@ -47,8 +47,13 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
-		var closeParen = root.FindToken(diagnostic.Location.SourceSpan.Start);
+		var targetToken = root.FindToken(diagnostic.Location.SourceSpan.Start);
 
+		if (TryFixRawStringLiteralIndentation(text, targetToken, out var fixedRawStringLiteralText)) {
+			return document.WithText(fixedRawStringLiteralText);
+		}
+
+		var closeParen = targetToken;
 		if (!closeParen.IsKind(SyntaxKind.CloseParenToken)) {
 			return document;
 		}
@@ -69,12 +74,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		var expectedIndent = GetLineIndentation(text, openLine);
 		var actualPrefixSpan = TextSpan.FromBounds(closeLine.Start, closeParen.SpanStart);
 		var actualPrefix = text.ToString(actualPrefixSpan);
-
-		if (actualPrefix.All(static character => character is ' ' or '\t')) {
-			return document.WithText(text.Replace(actualPrefixSpan, expectedIndent));
-		}
-
-		var lineBreak = GetLineBreak(text);
+		var lineBreak = GetLineBreak(text, closeLine);
 
 		if (
 			TryFixRawStringLiteralClosingLine(
@@ -89,6 +89,23 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			)
 		) {
 			return document.WithText(fixedRawStringText);
+		}
+
+		if (
+			TryFixRawStringLiteralBeforeClosingLine(
+				text,
+				closeParen,
+				actualPrefixSpan,
+				actualPrefix,
+				expectedIndent,
+				out fixedRawStringText
+			)
+		) {
+			return document.WithText(fixedRawStringText);
+		}
+
+		if (actualPrefix.All(static character => character is ' ' or '\t')) {
+			return document.WithText(text.Replace(actualPrefixSpan, expectedIndent));
 		}
 
 		var fixedText = text.Replace(
@@ -141,42 +158,197 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			),
 		};
 
-		if (expectedRawStringIndent != currentRawStringIndent) {
-			for (
-				var lineNumber = openingLine.LineNumber + 1;
-				lineNumber < closeLine.LineNumber;
-				lineNumber++
-			) {
-				var line = text.Lines[lineNumber];
-				var lineText = text.ToString(TextSpan.FromBounds(line.Start, line.End));
-
-				if (lineText.Length == 0) {
-					continue;
-				}
-
-				if (currentRawStringIndent.Length == 0) {
-					changes.Add(new TextChange(new TextSpan(line.Start, 0), expectedRawStringIndent));
-					continue;
-				}
-
-				if (!lineText.StartsWith(currentRawStringIndent, StringComparison.Ordinal)) {
-					if (string.IsNullOrWhiteSpace(lineText)) {
-						continue;
-					}
-
-					return false;
-				}
-
-				changes.Add(
-					new TextChange(
-						new TextSpan(line.Start, currentRawStringIndent.Length),
-						expectedRawStringIndent
-					)
-				);
-			}
+		if (
+			expectedRawStringIndent != currentRawStringIndent
+			&& !TryAddRawStringContentIndentChanges(
+				text,
+				openingLine.LineNumber + 1,
+				closeLine.LineNumber,
+				currentRawStringIndent,
+				expectedRawStringIndent,
+				changes
+			)
+		) {
+			return false;
 		}
 
-		fixedText = text.WithChanges(changes);
+		fixedText = text.WithChanges(changes.OrderBy(static change => change.Span.Start));
+		return true;
+	}
+
+	private static bool TryFixRawStringLiteralBeforeClosingLine(
+		SourceText text,
+		SyntaxToken closeParen,
+		TextSpan actualPrefixSpan,
+		string actualPrefix,
+		string expectedIndent,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (!actualPrefix.All(static character => character is ' ' or '\t')) {
+			return false;
+		}
+
+		var rawStringToken = closeParen.GetPreviousToken();
+
+		if (!TryGetMultilineRawStringDelimiter(rawStringToken, out var rawStringDelimiter)) {
+			return false;
+		}
+
+		var closingDelimiterStart = rawStringToken.Span.End - rawStringDelimiter.Length;
+
+		if (closingDelimiterStart < rawStringToken.SpanStart) {
+			return false;
+		}
+
+		var openingLine = text.Lines.GetLineFromPosition(rawStringToken.SpanStart);
+		var rawStringClosingLine = text.Lines.GetLineFromPosition(closingDelimiterStart);
+		var closeParenLine = text.Lines.GetLineFromPosition(closeParen.SpanStart);
+
+		if (
+			openingLine.LineNumber == rawStringClosingLine.LineNumber
+			|| rawStringClosingLine.LineNumber >= closeParenLine.LineNumber
+		) {
+			return false;
+		}
+
+		var expectedRawStringIndent = GetLineIndentation(text, openingLine);
+		var currentRawStringIndent = GetLineIndentation(text, rawStringClosingLine);
+		var changes = new List<TextChange>();
+
+		if (expectedRawStringIndent != currentRawStringIndent) {
+			if (
+				!TryAddRawStringContentIndentChanges(
+					text,
+					openingLine.LineNumber + 1,
+					rawStringClosingLine.LineNumber,
+					currentRawStringIndent,
+					expectedRawStringIndent,
+					changes
+				)
+			) {
+				return false;
+			}
+
+			changes.Add(
+				new TextChange(
+					TextSpan.FromBounds(rawStringClosingLine.Start, closingDelimiterStart),
+					expectedRawStringIndent
+				)
+			);
+		}
+
+		if (actualPrefix != expectedIndent) {
+			changes.Add(new TextChange(actualPrefixSpan, expectedIndent));
+		}
+
+		if (changes.Count == 0) {
+			return false;
+		}
+
+		fixedText = text.WithChanges(changes.OrderBy(static change => change.Span.Start));
+		return true;
+	}
+
+	private static bool TryFixRawStringLiteralIndentation(
+		SourceText text,
+		SyntaxToken rawStringToken,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (!TryGetMultilineRawStringDelimiter(rawStringToken, out var rawStringDelimiter)) {
+			return false;
+		}
+
+		var closingDelimiterStart = rawStringToken.Span.End - rawStringDelimiter.Length;
+
+		if (closingDelimiterStart < rawStringToken.SpanStart) {
+			return false;
+		}
+
+		var openingLine = text.Lines.GetLineFromPosition(rawStringToken.SpanStart);
+		var closingLine = text.Lines.GetLineFromPosition(closingDelimiterStart);
+
+		if (openingLine.LineNumber == closingLine.LineNumber) {
+			return false;
+		}
+
+		var expectedRawStringIndent = GetLineIndentation(text, openingLine);
+		var currentRawStringIndent = GetLineIndentation(text, closingLine);
+
+		if (expectedRawStringIndent == currentRawStringIndent) {
+			return false;
+		}
+
+		var changes = new List<TextChange>();
+
+		if (
+			!TryAddRawStringContentIndentChanges(
+				text,
+				openingLine.LineNumber + 1,
+				closingLine.LineNumber,
+				currentRawStringIndent,
+				expectedRawStringIndent,
+				changes
+			)
+		) {
+			return false;
+		}
+
+		changes.Add(
+			new TextChange(
+				TextSpan.FromBounds(closingLine.Start, closingDelimiterStart),
+				expectedRawStringIndent
+			)
+		);
+
+		fixedText = text.WithChanges(changes.OrderBy(static change => change.Span.Start));
+		return true;
+	}
+
+	private static bool TryAddRawStringContentIndentChanges(
+		SourceText text,
+		int firstContentLineNumber,
+		int closingLineNumber,
+		string currentRawStringIndent,
+		string expectedRawStringIndent,
+		List<TextChange> changes
+	) {
+		for (
+			var lineNumber = firstContentLineNumber;
+			lineNumber < closingLineNumber;
+			lineNumber++
+		) {
+			var line = text.Lines[lineNumber];
+			var lineText = text.ToString(TextSpan.FromBounds(line.Start, line.End));
+
+			if (lineText.Length == 0) {
+				continue;
+			}
+
+			if (currentRawStringIndent.Length == 0) {
+				changes.Add(new TextChange(new TextSpan(line.Start, 0), expectedRawStringIndent));
+				continue;
+			}
+
+			if (!lineText.StartsWith(currentRawStringIndent, StringComparison.Ordinal)) {
+				if (string.IsNullOrWhiteSpace(lineText)) {
+					continue;
+				}
+
+				return false;
+			}
+
+			changes.Add(
+				new TextChange(
+					new TextSpan(line.Start, currentRawStringIndent.Length),
+					expectedRawStringIndent
+				)
+			);
+		}
+
 		return true;
 	}
 
@@ -221,6 +393,27 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		return true;
 	}
 
+	private static bool TryGetMultilineRawStringDelimiter(
+		SyntaxToken token,
+		out string delimiter
+	) {
+		delimiter = string.Empty;
+
+		var tokenText = token.Text;
+		var delimiterLength = 0;
+
+		while (delimiterLength < tokenText.Length && tokenText[delimiterLength] == '"') {
+			delimiterLength++;
+		}
+
+		if (delimiterLength < 3) {
+			return false;
+		}
+
+		delimiter = tokenText.Substring(0, delimiterLength);
+		return IsMultilineRawStringLiteral(token, delimiter);
+	}
+
 	private static bool IsMultilineRawStringLiteral(
 		SyntaxToken token,
 		string delimiter
@@ -254,5 +447,13 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		return "\r\n";
+	}
+
+	private static string GetLineBreak(SourceText text, TextLine preferredLine) {
+		if (preferredLine.EndIncludingLineBreak > preferredLine.End) {
+			return text.ToString(TextSpan.FromBounds(preferredLine.End, preferredLine.EndIncludingLineBreak));
+		}
+
+		return GetLineBreak(text);
 	}
 }

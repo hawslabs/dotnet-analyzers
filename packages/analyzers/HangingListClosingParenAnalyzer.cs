@@ -43,12 +43,16 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			return;
 		}
 
-		AnalyzeHangingList(
+		var reportedClosingParen = AnalyzeHangingList(
 			context,
 			node.OpenParenToken,
 			node.CloseParenToken,
 			node.Arguments[0].GetFirstToken()
 		);
+
+		if (!reportedClosingParen) {
+			AnalyzeRawStringLiteralArguments(context, node);
+		}
 	}
 
 	private static void AnalyzeParameterList(SyntaxNodeAnalysisContext context) {
@@ -77,26 +81,70 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		);
 	}
 
-	private static void AnalyzeHangingList(
+	private static bool AnalyzeHangingList(
 		SyntaxNodeAnalysisContext context,
 		SyntaxToken openParen,
 		SyntaxToken closeParen,
 		SyntaxToken firstItemToken
 	) {
 		if (openParen.IsMissing || closeParen.IsMissing || firstItemToken.IsMissing) {
-			return;
+			return false;
 		}
 
 		var tree = closeParen.SyntaxTree;
 
 		if (tree is null) {
-			return;
+			return false;
 		}
 
 		var text = tree.GetText(context.CancellationToken);
 
 		var openLine = text.Lines.GetLineFromPosition(openParen.SpanStart);
 		var closeLine = text.Lines.GetLineFromPosition(closeParen.SpanStart);
+		var firstItemLine = text.Lines.GetLineFromPosition(firstItemToken.SpanStart);
+
+		if (openLine.LineNumber == closeLine.LineNumber) {
+			return false;
+		}
+
+		if (firstItemLine.LineNumber == openLine.LineNumber) {
+			return false;
+		}
+
+		var expectedIndent = GetLineIndentation(text, openLine);
+		var actualPrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, closeParen.SpanStart));
+
+		if (actualPrefix == expectedIndent) {
+			return false;
+		}
+
+		context.ReportDiagnostic(Diagnostic.Create(Rule, closeParen.GetLocation()));
+		return true;
+	}
+
+	private static void AnalyzeRawStringLiteralArguments(
+		SyntaxNodeAnalysisContext context,
+		ArgumentListSyntax node
+	) {
+		if (node.OpenParenToken.IsMissing || node.CloseParenToken.IsMissing || node.Arguments.Count == 0) {
+			return;
+		}
+
+		var firstItemToken = node.Arguments[0].GetFirstToken();
+
+		if (firstItemToken.IsMissing) {
+			return;
+		}
+
+		var tree = node.SyntaxTree;
+
+		if (tree is null) {
+			return;
+		}
+
+		var text = tree.GetText(context.CancellationToken);
+		var openLine = text.Lines.GetLineFromPosition(node.OpenParenToken.SpanStart);
+		var closeLine = text.Lines.GetLineFromPosition(node.CloseParenToken.SpanStart);
 		var firstItemLine = text.Lines.GetLineFromPosition(firstItemToken.SpanStart);
 
 		if (openLine.LineNumber == closeLine.LineNumber) {
@@ -107,14 +155,60 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			return;
 		}
 
-		var expectedIndent = GetLineIndentation(text, openLine);
-		var actualPrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, closeParen.SpanStart));
+		var expectedCloseIndent = GetLineIndentation(text, openLine);
+		var actualClosePrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, node.CloseParenToken.SpanStart));
 
-		if (actualPrefix == expectedIndent) {
+		if (actualClosePrefix != expectedCloseIndent) {
 			return;
 		}
 
-		context.ReportDiagnostic(Diagnostic.Create(Rule, closeParen.GetLocation()));
+		foreach (var argument in node.Arguments) {
+			if (argument.Expression is not LiteralExpressionSyntax literalExpression) {
+				continue;
+			}
+
+			AnalyzeRawStringLiteralArgument(context, text, literalExpression.Token);
+		}
+	}
+
+	private static void AnalyzeRawStringLiteralArgument(
+		SyntaxNodeAnalysisContext context,
+		SourceText text,
+		SyntaxToken token
+	) {
+		if (!TryGetMultilineRawStringDelimiter(token, out var delimiter)) {
+			return;
+		}
+
+		var closingDelimiterStart = token.Span.End - delimiter.Length;
+
+		if (closingDelimiterStart < token.SpanStart) {
+			return;
+		}
+
+		var openingLine = text.Lines.GetLineFromPosition(token.SpanStart);
+		var closingLine = text.Lines.GetLineFromPosition(closingDelimiterStart);
+
+		if (openingLine.LineNumber == closingLine.LineNumber) {
+			return;
+		}
+
+		var expectedIndent = GetLineIndentation(text, openingLine);
+		var actualIndent = GetLineIndentation(text, closingLine);
+
+		if (actualIndent == expectedIndent) {
+			return;
+		}
+
+		context.ReportDiagnostic(
+			Diagnostic.Create(
+				Rule,
+				Location.Create(
+					context.Node.SyntaxTree,
+					new TextSpan(closingDelimiterStart, delimiter.Length)
+				)
+			)
+		);
 	}
 
 	private static string GetLineIndentation(SourceText text, TextLine line) {
@@ -129,5 +223,28 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		}
 
 		return lineText.Substring(0, index);
+	}
+
+	private static bool TryGetMultilineRawStringDelimiter(
+		SyntaxToken token,
+		out string delimiter
+	) {
+		delimiter = string.Empty;
+
+		var tokenText = token.Text;
+		var delimiterLength = 0;
+
+		while (delimiterLength < tokenText.Length && tokenText[delimiterLength] == '"') {
+			delimiterLength++;
+		}
+
+		if (delimiterLength < 3) {
+			return false;
+		}
+
+		delimiter = tokenText.Substring(0, delimiterLength);
+
+		return tokenText.EndsWith(delimiter, StringComparison.Ordinal)
+			&& tokenText.Any(static character => character is '\r' or '\n');
 	}
 }

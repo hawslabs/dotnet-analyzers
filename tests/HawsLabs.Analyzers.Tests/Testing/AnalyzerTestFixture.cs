@@ -18,6 +18,17 @@ public abstract class AnalyzerTestFixture<TAnalyzer>
 		return test.RunAsync();
 	}
 
+	protected static Task VerifyAnalyzerAsync(
+		string source,
+		MarkupMode markupMode,
+		params DiagnosticResult[] expectedDiagnostics
+	) {
+		var test = CreateAnalyzerTest(source);
+		test.TestState.MarkupHandling = markupMode;
+		test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
+		return test.RunAsync();
+	}
+
 	private static CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> CreateAnalyzerTest(string source) {
 		return new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> {
 			TestCode = source,

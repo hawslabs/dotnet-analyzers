@@ -1,1 +1,11 @@
 #nullable enable
+HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer
+HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.ReturnRawStringLiteralAnalyzer() -> void
+const HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.DiagnosticId = "HA0002" -> string!
+override HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
+override HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
+HawsLabs.Analyzers.ReturnRawStringLiteralCodeFixProvider
+HawsLabs.Analyzers.ReturnRawStringLiteralCodeFixProvider.ReturnRawStringLiteralCodeFixProvider() -> void
+override HawsLabs.Analyzers.ReturnRawStringLiteralCodeFixProvider.FixableDiagnosticIds.get -> System.Collections.Immutable.ImmutableArray<string!>
+override HawsLabs.Analyzers.ReturnRawStringLiteralCodeFixProvider.GetFixAllProvider() -> Microsoft.CodeAnalysis.CodeFixes.FixAllProvider!
+override HawsLabs.Analyzers.ReturnRawStringLiteralCodeFixProvider.RegisterCodeFixesAsync(Microsoft.CodeAnalysis.CodeFixes.CodeFixContext context) -> System.Threading.Tasks.Task!

@@ -53,7 +53,7 @@ self-analyze:
 self-fix:
     dotnet build {{ analyzer_project }} -p:ArtifactsPath={{ self_artifacts_path }}
     dotnet restore {{ solution }}
-    $env:RunSelfAnalyzer = 'true'; $env:SelfAnalyzerPath = '{{ self_analyzer_path }}'; dotnet format {{ solution }} analyzers --diagnostics HA0001 --severity warn --no-restore
+    $env:RunSelfAnalyzer = 'true'; $env:SelfAnalyzerPath = '{{ self_analyzer_path }}'; dotnet format {{ solution }} analyzers --diagnostics HA0001 HA0002 --severity warn --no-restore
 
 clean:
     dotnet clean {{ solution }}
