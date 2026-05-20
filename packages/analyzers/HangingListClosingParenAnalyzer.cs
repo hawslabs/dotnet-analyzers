@@ -21,7 +21,8 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		description:
 			"When an argument or parameter list starts on the line after its opening parenthesis, "
 			+ "the matching closing parenthesis should be on its own line and indented to the same "
-			+ "level as the line containing the opening parenthesis.");
+			+ "level as the line containing the opening parenthesis."
+	);
 
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 		ImmutableArray.Create(Rule);
@@ -32,6 +33,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 
 		context.RegisterSyntaxNodeAction(AnalyzeArgumentList, SyntaxKind.ArgumentList);
 		context.RegisterSyntaxNodeAction(AnalyzeParameterList, SyntaxKind.ParameterList);
+		context.RegisterSyntaxNodeAction(AnalyzeWhileStatement, SyntaxKind.WhileStatement);
 	}
 
 	private static void AnalyzeArgumentList(SyntaxNodeAnalysisContext context) {
@@ -45,7 +47,8 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			context,
 			node.OpenParenToken,
 			node.CloseParenToken,
-			node.Arguments[0].GetFirstToken());
+			node.Arguments[0].GetFirstToken()
+		);
 	}
 
 	private static void AnalyzeParameterList(SyntaxNodeAnalysisContext context) {
@@ -59,14 +62,27 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			context,
 			node.OpenParenToken,
 			node.CloseParenToken,
-			node.Parameters[0].GetFirstToken());
+			node.Parameters[0].GetFirstToken()
+		);
+	}
+
+	private static void AnalyzeWhileStatement(SyntaxNodeAnalysisContext context) {
+		var node = (WhileStatementSyntax)context.Node;
+
+		AnalyzeHangingList(
+			context,
+			node.OpenParenToken,
+			node.CloseParenToken,
+			node.Condition.GetFirstToken()
+		);
 	}
 
 	private static void AnalyzeHangingList(
 		SyntaxNodeAnalysisContext context,
 		SyntaxToken openParen,
 		SyntaxToken closeParen,
-		SyntaxToken firstItemToken) {
+		SyntaxToken firstItemToken
+	) {
 		if (openParen.IsMissing || closeParen.IsMissing || firstItemToken.IsMissing) {
 			return;
 		}
@@ -107,7 +123,8 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 
 		while (
 			index < lineText.Length
-			&& (lineText[index] == ' ' || lineText[index] == '\t')) {
+			&& (lineText[index] == ' ' || lineText[index] == '\t')
+		) {
 			index++;
 		}
 

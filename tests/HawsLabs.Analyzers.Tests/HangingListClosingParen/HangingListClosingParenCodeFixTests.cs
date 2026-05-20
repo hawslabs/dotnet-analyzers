@@ -42,6 +42,34 @@ private static void Test(
 	}
 
 	[Fact]
+	public Task MovesWhileConditionClosingParenToItsOwnLine() {
+		return VerifyCodeFixAsync(
+			InMethodBody(
+				"""
+var lineText = " ";
+var index = 0;
+
+while (
+	index < lineText.Length
+	&& (lineText[index] == ' ' || lineText[index] == '\t')[|)|] {
+	index++;
+}
+"""),
+			InMethodBody(
+				"""
+var lineText = " ";
+var index = 0;
+
+while (
+	index < lineText.Length
+	&& (lineText[index] == ' ' || lineText[index] == '\t')
+) {
+	index++;
+}
+"""));
+	}
+
+	[Fact]
 	public Task RealignsExistingClosingParenLine() {
 		return VerifyCodeFixAsync(
 			InMethodBody(

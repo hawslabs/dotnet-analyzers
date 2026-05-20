@@ -15,12 +15,20 @@
     <PackageReleaseNotes>See CHANGELOG.md for release notes.</PackageReleaseNotes>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <SelfAnalyzerPath Condition="'$(SelfAnalyzerPath)' == ''">$(TargetPath)</SelfAnalyzerPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
     <PackageReference Include="System.Composition.AttributedModel" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RunSelfAnalyzer)' == 'true' and Exists('$(SelfAnalyzerPath)')">
+    <Analyzer Include="$(SelfAnalyzerPath)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,8 +27,10 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			CodeAction.Create(
 				Title,
 				cancellationToken => FixAsync(context.Document, diagnostic, cancellationToken),
-				equivalenceKey: Title),
-			diagnostic);
+				equivalenceKey: Title
+			),
+			diagnostic
+		);
 
 		return Task.CompletedTask;
 	}
@@ -36,7 +38,8 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 	private static async Task<Document> FixAsync(
 		Document document,
 		Diagnostic diagnostic,
-		CancellationToken cancellationToken) {
+		CancellationToken cancellationToken
+	) {
 		var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
 
 		if (root is null) {
@@ -53,6 +56,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		var openParen = closeParen.Parent switch {
 			ArgumentListSyntax argumentList => argumentList.OpenParenToken,
 			ParameterListSyntax parameterList => parameterList.OpenParenToken,
+			WhileStatementSyntax whileStatement => whileStatement.OpenParenToken,
 			_ => default,
 		};
 
@@ -73,7 +77,8 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		var lineBreak = GetLineBreak(text);
 		var fixedText = text.Replace(
 			new TextSpan(closeParen.SpanStart, 0),
-			lineBreak + expectedIndent);
+			lineBreak + expectedIndent
+		);
 
 		return document.WithText(fixedText);
 	}
@@ -84,7 +89,8 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		while (
 			index < lineText.Length
-			&& (lineText[index] == ' ' || lineText[index] == '\t')) {
+			&& (lineText[index] == ' ' || lineText[index] == '\t')
+		) {
 			index++;
 		}
 

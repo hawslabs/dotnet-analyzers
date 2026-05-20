@@ -25,6 +25,21 @@ private static void Test(
 	}
 
 	[Fact]
+	public Task ReportsDiagnosticForHangingWhileConditionWithoutDedicatedClosingParenLine() {
+		return VerifyAnalyzerAsync(InMethodBody(
+			"""
+var lineText = " ";
+var index = 0;
+
+while (
+	index < lineText.Length
+	&& (lineText[index] == ' ' || lineText[index] == '\t')[|)|] {
+	index++;
+}
+"""));
+	}
+
+	[Fact]
 	public Task DoesNotReportDiagnosticForSingleLineArgumentList() {
 		return VerifyAnalyzerAsync(InMethodBody(
 			"""

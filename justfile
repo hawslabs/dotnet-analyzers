@@ -3,6 +3,8 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 solution := "HawsLabs.Analyzers.slnx"
 analyzer_project := "packages/analyzers/HawsLabs.Analyzers.csproj"
+self_artifacts_path := justfile_directory() / ".artifacts" / "self-analyze"
+self_analyzer_path := self_artifacts_path / "bin" / "HawsLabs.Analyzers" / "debug" / "HawsLabs.Analyzers.dll"
 ci_configuration := env_var_or_default("BUILD_CONFIGURATION", "Release")
 package_output_path := env_var_or_default("PACKAGE_OUTPUT_PATH", ".artifacts/packages")
 test_results_path := env_var_or_default("TEST_RESULTS_PATH", ".artifacts/test-results")
@@ -43,6 +45,14 @@ format-check:
 fix:
     dotnet format {{ solution }}
     dotnet build {{ solution }}
+
+self-analyze:
+    dotnet build {{ analyzer_project }} -p:ArtifactsPath={{ self_artifacts_path }}
+    dotnet build {{ analyzer_project }} --no-restore -p:ArtifactsPath={{ self_artifacts_path }} -p:RunSelfAnalyzer=true
+
+self-fix:
+    dotnet build {{ analyzer_project }} -p:ArtifactsPath={{ self_artifacts_path }}
+    $env:RunSelfAnalyzer = 'true'; $env:SelfAnalyzerPath = '{{ self_analyzer_path }}'; dotnet format {{ analyzer_project }} analyzers --diagnostics HA0001 --severity warn --no-restore
 
 clean:
     dotnet clean {{ solution }}
