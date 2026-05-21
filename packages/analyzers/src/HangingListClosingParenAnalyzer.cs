@@ -71,6 +71,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 
 		if (!reportedClosingParen) {
 			AnalyzeExpressionBodiedParameterList(context, node);
+			AnalyzeBaseListParameterList(context, node);
 		}
 	}
 
@@ -228,6 +229,59 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		context.ReportDiagnostic(Diagnostic.Create(Rule, node.CloseParenToken.GetLocation()));
 	}
 
+	private static void AnalyzeBaseListParameterList(
+		SyntaxNodeAnalysisContext context,
+		ParameterListSyntax node
+	) {
+		if (
+			node.OpenParenToken.IsMissing
+			|| node.CloseParenToken.IsMissing
+			|| node.Parameters.Count == 0
+			|| !TryGetBaseList(node, out var baseList)
+			|| baseList.ColonToken.IsMissing
+		) {
+			return;
+		}
+
+		var firstItemToken = node.Parameters[0].GetFirstToken();
+
+		if (firstItemToken.IsMissing) {
+			return;
+		}
+
+		var tree = node.SyntaxTree;
+
+		if (tree is null) {
+			return;
+		}
+
+		var text = tree.GetText(context.CancellationToken);
+		var openLine = text.Lines.GetLineFromPosition(node.OpenParenToken.SpanStart);
+		var closeLine = text.Lines.GetLineFromPosition(node.CloseParenToken.SpanStart);
+		var firstItemLine = text.Lines.GetLineFromPosition(firstItemToken.SpanStart);
+		var colonLine = text.Lines.GetLineFromPosition(baseList.ColonToken.SpanStart);
+
+		if (openLine.LineNumber == closeLine.LineNumber) {
+			return;
+		}
+
+		if (firstItemLine.LineNumber == openLine.LineNumber) {
+			return;
+		}
+
+		if (closeLine.LineNumber == colonLine.LineNumber) {
+			return;
+		}
+
+		var gapSpan = TextSpan.FromBounds(node.CloseParenToken.Span.End, baseList.ColonToken.SpanStart);
+
+		if (!text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character))) {
+			return;
+		}
+
+		context.ReportDiagnostic(Diagnostic.Create(Rule, node.CloseParenToken.GetLocation()));
+	}
+
 	private static void AnalyzeRawStringLiteralArgument(
 		SyntaxNodeAnalysisContext context,
 		SourceText text,
@@ -319,5 +373,17 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		};
 
 		return expressionBody is not null;
+	}
+
+	private static bool TryGetBaseList(
+		ParameterListSyntax node,
+		out BaseListSyntax baseList
+	) {
+		baseList = node.Parent switch {
+			TypeDeclarationSyntax { BaseList: { } value } => value,
+			_ => null!,
+		};
+
+		return baseList is not null;
 	}
 }

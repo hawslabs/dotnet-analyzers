@@ -80,6 +80,10 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			return document.WithText(fixedExpressionBodyText);
 		}
 
+		if (TryFixBaseListLine(text, closeParen, out var fixedBaseListText)) {
+			return document.WithText(fixedBaseListText);
+		}
+
 		if (
 			TryFixRawStringLiteralClosingLine(
 				text,
@@ -143,6 +147,39 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		var gapSpan = TextSpan.FromBounds(closeParen.Span.End, expressionBody.ArrowToken.SpanStart);
+		var gapText = text.ToString(gapSpan);
+
+		if (!gapText.All(static character => char.IsWhiteSpace(character))) {
+			return false;
+		}
+
+		fixedText = text.Replace(gapSpan, " ");
+		return true;
+	}
+
+	private static bool TryFixBaseListLine(
+		SourceText text,
+		SyntaxToken closeParen,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (
+			closeParen.Parent is not ParameterListSyntax parameterList
+			|| !TryGetBaseList(parameterList, out var baseList)
+			|| baseList.ColonToken.IsMissing
+		) {
+			return false;
+		}
+
+		var closeLine = text.Lines.GetLineFromPosition(closeParen.SpanStart);
+		var colonLine = text.Lines.GetLineFromPosition(baseList.ColonToken.SpanStart);
+
+		if (closeLine.LineNumber == colonLine.LineNumber) {
+			return false;
+		}
+
+		var gapSpan = TextSpan.FromBounds(closeParen.Span.End, baseList.ColonToken.SpanStart);
 		var gapText = text.ToString(gapSpan);
 
 		if (!gapText.All(static character => char.IsWhiteSpace(character))) {
@@ -508,5 +545,17 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		};
 
 		return expressionBody is not null;
+	}
+
+	private static bool TryGetBaseList(
+		ParameterListSyntax node,
+		out BaseListSyntax baseList
+	) {
+		baseList = node.Parent switch {
+			TypeDeclarationSyntax { BaseList: { } value } => value,
+			_ => null!,
+		};
+
+		return baseList is not null;
 	}
 }

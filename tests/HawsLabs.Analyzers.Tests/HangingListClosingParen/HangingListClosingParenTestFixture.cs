@@ -16,6 +16,66 @@ public abstract class HangingListClosingParenTestFixture
 		return CSharpSource.InType(members);
 	}
 
+	protected static string PrimaryConstructorBaseListOnNextLine() {
+		return """
+			namespace BoringLab.ServiceBus.OnPrem.Client;
+
+			public sealed class OnPremServiceBusClient(
+				OnPremServiceClientConnection connection,
+				ServiceBusClientAuthentication authentication
+			[|)|]
+				: SignalRServiceBusClient(authentication) {
+				protected override bool TryGetBusUrl(
+					ServiceBusEnvelope envelope,
+					out string busUrl,
+					out ServiceBusSendResult unavailable
+				) => TryUseConfiguredBusUrl(connection.BrokerUrl, out busUrl, out unavailable);
+			}
+
+			public sealed class OnPremServiceClientConnection {
+				public string BrokerUrl => string.Empty;
+			}
+
+			public sealed class ServiceBusClientAuthentication;
+
+			public sealed class ServiceBusEnvelope;
+
+			public sealed class ServiceBusSendResult;
+
+			public abstract class SignalRServiceBusClient(ServiceBusClientAuthentication authentication) {
+				protected abstract bool TryGetBusUrl(
+					ServiceBusEnvelope envelope,
+					out string busUrl,
+					out ServiceBusSendResult unavailable
+				);
+
+				protected bool TryUseConfiguredBusUrl(
+					string brokerUrl,
+					out string busUrl,
+					out ServiceBusSendResult unavailable
+				) {
+					busUrl = brokerUrl;
+					unavailable = new ServiceBusSendResult();
+					return true;
+				}
+			}
+			""";
+	}
+
+	protected static string PrimaryConstructorBaseListOnClosingParenLine() {
+		var source = PrimaryConstructorBaseListOnNextLine().Replace("[|)|]", ")", StringComparison.Ordinal);
+
+		return source.Replace(
+			")\r\n\t: SignalRServiceBusClient(authentication)",
+			") : SignalRServiceBusClient(authentication)",
+			StringComparison.Ordinal
+		).Replace(
+			")\n\t: SignalRServiceBusClient(authentication)",
+			") : SignalRServiceBusClient(authentication)",
+			StringComparison.Ordinal
+		);
+	}
+
 	protected static DiagnosticResult Diagnostic() {
 		return new DiagnosticResult(
 			HangingListClosingParenAnalyzer.DiagnosticId,

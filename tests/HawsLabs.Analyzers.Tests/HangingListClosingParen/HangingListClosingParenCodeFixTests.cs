@@ -458,6 +458,14 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 	}
 
 	[Fact]
+	public Task MovesPrimaryConstructorBaseListToClosingParenLine() {
+		return VerifyCodeFixAsync(
+			PrimaryConstructorBaseListOnNextLine(),
+			PrimaryConstructorBaseListOnClosingParenLine()
+		);
+	}
+
+	[Fact]
 	public Task MovesWhileConditionClosingParenToItsOwnLine() {
 		return VerifyCodeFixAsync(
 			InMethodBody(

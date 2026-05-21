@@ -62,6 +62,11 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 	}
 
 	[Fact]
+	public Task ReportsDiagnosticForPrimaryConstructorWithBaseListOnNextLine() {
+		return VerifyAnalyzerAsync(PrimaryConstructorBaseListOnNextLine());
+	}
+
+	[Fact]
 	public Task ReportsDiagnosticForHangingWhileConditionWithoutDedicatedClosingParenLine() {
 		return VerifyAnalyzerAsync(InMethodBody(
 			"""
