@@ -411,6 +411,61 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 	}
 
 	[Fact]
+	public Task MovesShortChainedFirstCallToOpeningLineWhenNestedArgumentListWraps() {
+		return VerifyCodeFixAsync(
+			"""
+			using System;
+			using System.Linq;
+
+			internal static class TestCode {
+				private static void Test() {
+					var messageTypeName = string.Empty;
+					var messageType = ServiceBusMessageRegistry.MessageTypes
+						.FirstOrDefault(type => string.Equals(
+							WolverineMessageNaming.ToMessageTypeName(type),
+							messageTypeName,
+							StringComparison.Ordinal
+						)[|)|]!;
+				}
+
+				private static class ServiceBusMessageRegistry {
+					public static Type[] MessageTypes { get; } = Array.Empty<Type>();
+				}
+
+				private static class WolverineMessageNaming {
+					public static string ToMessageTypeName(Type type) => type.Name;
+				}
+			}
+			""",
+			"""
+			using System;
+			using System.Linq;
+
+			internal static class TestCode {
+				private static void Test() {
+					var messageTypeName = string.Empty;
+					var messageType = ServiceBusMessageRegistry.MessageTypes.FirstOrDefault(
+						type => string.Equals(
+							WolverineMessageNaming.ToMessageTypeName(type),
+							messageTypeName,
+							StringComparison.Ordinal
+						)
+					)!;
+				}
+
+				private static class ServiceBusMessageRegistry {
+					public static Type[] MessageTypes { get; } = Array.Empty<Type>();
+				}
+
+				private static class WolverineMessageNaming {
+					public static string ToMessageTypeName(Type type) => type.Name;
+				}
+			}
+			"""
+		);
+	}
+
+	[Fact]
 	public Task ExpandsPrimaryConstructorParameterListWhenBaseListMovesToNewLine() {
 		return VerifyCodeFixAsync(
 			"""

@@ -10,6 +10,7 @@ namespace HawsLabs.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 	public const string DiagnosticId = "HA0001";
+	private const int DefaultMaxLineLength = 110;
 
 	private static readonly DiagnosticDescriptor Rule = new(
 		id: DiagnosticId,
@@ -24,8 +25,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			+ "level as the line containing the opening parenthesis."
 	);
 
-	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-		ImmutableArray.Create(Rule);
+	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
 	public override void Initialize(AnalysisContext context) {
 		context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -53,11 +53,71 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			node.OpenParenToken,
 			node.CloseParenToken,
 			node.Arguments.Select(static argument => argument.GetFirstToken()).ToArray()
+		) || AnalyzeShortFirstCallWithMultilineArgument(
+			context,
+			node
 		);
 
 		if (!reportedClosingParen) {
 			AnalyzeRawStringLiteralArguments(context, node);
 		}
+	}
+
+	private static bool AnalyzeShortFirstCallWithMultilineArgument(
+		SyntaxNodeAnalysisContext context,
+		ArgumentListSyntax node
+	) {
+		if (
+			node.Arguments.Count != 1
+			|| node.OpenParenToken.IsMissing
+			|| node.CloseParenToken.IsMissing
+			|| !TryGetFirstInvocationMemberAccess(node, out var memberAccess)
+		) {
+			return false;
+		}
+
+		var argument = node.Arguments[0];
+		var firstArgumentToken = argument.GetFirstToken();
+		var lastArgumentToken = argument.GetLastToken();
+
+		if (firstArgumentToken.IsMissing || lastArgumentToken.IsMissing) {
+			return false;
+		}
+
+		var tree = node.SyntaxTree;
+
+		if (tree is null) {
+			return false;
+		}
+
+		var text = tree.GetText(context.CancellationToken);
+		var openLine = text.Lines.GetLineFromPosition(node.OpenParenToken.SpanStart);
+		var closeLine = text.Lines.GetLineFromPosition(node.CloseParenToken.SpanStart);
+		var firstArgumentLine = text.Lines.GetLineFromPosition(firstArgumentToken.SpanStart);
+		var lastArgumentLine = text.Lines.GetLineFromPosition(lastArgumentToken.SpanStart);
+
+		if (
+			firstArgumentLine.LineNumber != openLine.LineNumber
+			|| lastArgumentLine.LineNumber == openLine.LineNumber
+			|| closeLine.LineNumber != lastArgumentLine.LineNumber
+		) {
+			return false;
+		}
+
+		var actualPrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, node.CloseParenToken.SpanStart));
+
+		if (actualPrefix.All(static character => character is ' ' or '\t')) {
+			return false;
+		}
+
+		var maxLineLength = GetMaxLineLength(context, tree);
+
+		if (!CanMoveInvocationToReceiverLine(text, memberAccess, node.OpenParenToken, maxLineLength)) {
+			return false;
+		}
+
+		context.ReportDiagnostic(Diagnostic.Create(Rule, node.CloseParenToken.GetLocation()));
+		return true;
 	}
 
 	private static void AnalyzeParameterList(SyntaxNodeAnalysisContext context) {
@@ -391,6 +451,72 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		}
 
 		return lineText.Substring(0, index);
+	}
+
+	private static int GetMaxLineLength(
+		SyntaxNodeAnalysisContext context,
+		SyntaxTree tree
+	) {
+		var options = context.Options.AnalyzerConfigOptionsProvider.GetOptions(tree);
+
+		if (
+			options.TryGetValue("max_line_length", out var value)
+			&& int.TryParse(value, out var maxLineLength)
+			&& maxLineLength > 0
+		) {
+			return maxLineLength;
+		}
+
+		return DefaultMaxLineLength;
+	}
+
+	private static bool CanMoveInvocationToReceiverLine(
+		SourceText text,
+		MemberAccessExpressionSyntax memberAccess,
+		SyntaxToken openParen,
+		int maxLineLength
+	) {
+		var receiverLine = text.Lines.GetLineFromPosition(memberAccess.Expression.SpanStart);
+		var dotLine = text.Lines.GetLineFromPosition(memberAccess.OperatorToken.SpanStart);
+
+		if (receiverLine.LineNumber == dotLine.LineNumber) {
+			return false;
+		}
+
+		var gapSpan = TextSpan.FromBounds(memberAccess.Expression.Span.End, memberAccess.OperatorToken.SpanStart);
+
+		if (!text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character))) {
+			return false;
+		}
+
+		var receiverText = text.ToString(TextSpan.FromBounds(receiverLine.Start, memberAccess.Expression.Span.End));
+		var invocationText = text.ToString(TextSpan.FromBounds(memberAccess.OperatorToken.SpanStart, openParen.Span.End));
+
+		return receiverText.Length + invocationText.Length <= maxLineLength;
+	}
+
+	private static bool TryGetFirstInvocationMemberAccess(
+		ArgumentListSyntax node,
+		out MemberAccessExpressionSyntax memberAccess
+	) {
+		memberAccess = null!;
+
+		if (node.Parent is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax value }) {
+			return false;
+		}
+
+		var memberName = value.Name switch {
+			GenericNameSyntax genericName => genericName.Identifier.ValueText,
+			IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
+			_ => string.Empty,
+		};
+
+		if (!memberName.StartsWith("First", StringComparison.Ordinal)) {
+			return false;
+		}
+
+		memberAccess = value;
+		return true;
 	}
 
 	private static bool TryGetMultilineRawStringDelimiter(

@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ### Added
 
+- Added `HA0003` to warn when `indent_brace_style = 1TBS` or `OTBS` conflicts with matching C# brace and newline formatting options, including per-option diagnostics for observable `csharp_prefer_braces` / `IDE0011` severity conflicts.
 - Added a GitHub Actions workflow that builds, tests, packs, and publishes analyzer packages to GitHub Packages on main and repository pull requests, plus nuget.org on main.
 - Added `HA0002` to format multiline raw string literal indentation, including direct return statements and raw string arguments.
 - Added shared package metadata, versioning, repository, Source Link, and portable PDB settings for the analyzer NuGet package.

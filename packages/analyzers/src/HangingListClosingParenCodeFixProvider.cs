@@ -14,12 +14,11 @@ namespace HawsLabs.Analyzers;
 [Shared]
 public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 	private const string Title = "Format hanging-list closing parenthesis";
+	private const int DefaultMaxLineLength = 110;
 
-	public override ImmutableArray<string> FixableDiagnosticIds =>
-		ImmutableArray.Create(HangingListClosingParenAnalyzer.DiagnosticId);
+	public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(HangingListClosingParenAnalyzer.DiagnosticId);
 
-	public override FixAllProvider GetFixAllProvider() =>
-		WellKnownFixAllProviders.BatchFixer;
+	public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
 	public override Task RegisterCodeFixesAsync(CodeFixContext context) {
 		var diagnostic = context.Diagnostics[0];
@@ -76,6 +75,11 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		var actualPrefixSpan = TextSpan.FromBounds(closeLine.Start, closeParen.SpanStart);
 		var actualPrefix = text.ToString(actualPrefixSpan);
 		var lineBreak = GetLineBreak(text, closeLine);
+		var maxLineLength = GetMaxLineLength(document, root.SyntaxTree);
+
+		if (TryExpandShortFirstCall(text, closeParen, lineBreak, maxLineLength, out var fixedFirstCallText)) {
+			return document.WithText(fixedFirstCallText);
+		}
 
 		if (TryExpandSplitList(text, closeParen, expectedIndent, lineBreak, out var expandedListText)) {
 			return document.WithText(expandedListText);
@@ -127,6 +131,77 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		);
 
 		return document.WithText(fixedText);
+	}
+
+	private static bool TryExpandShortFirstCall(
+		SourceText text,
+		SyntaxToken closeParen,
+		string lineBreak,
+		int maxLineLength,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (
+			closeParen.Parent is not ArgumentListSyntax { Arguments.Count: 1 } argumentList
+			|| argumentList.OpenParenToken.IsMissing
+			|| argumentList.CloseParenToken.IsMissing
+			|| !TryGetFirstInvocationMemberAccess(argumentList, out var memberAccess)
+			|| !CanMoveInvocationToReceiverLine(text, memberAccess, argumentList.OpenParenToken, maxLineLength)
+		) {
+			return false;
+		}
+
+		var argument = argumentList.Arguments[0];
+		var firstArgumentToken = argument.GetFirstToken();
+		var lastArgumentToken = argument.GetLastToken();
+
+		if (firstArgumentToken.IsMissing || lastArgumentToken.IsMissing) {
+			return false;
+		}
+
+		var openLine = text.Lines.GetLineFromPosition(argumentList.OpenParenToken.SpanStart);
+		var closeLine = text.Lines.GetLineFromPosition(argumentList.CloseParenToken.SpanStart);
+		var firstArgumentLine = text.Lines.GetLineFromPosition(firstArgumentToken.SpanStart);
+		var lastArgumentLine = text.Lines.GetLineFromPosition(lastArgumentToken.SpanStart);
+
+		if (
+			firstArgumentLine.LineNumber != openLine.LineNumber
+			|| lastArgumentLine.LineNumber == openLine.LineNumber
+			|| closeLine.LineNumber != lastArgumentLine.LineNumber
+		) {
+			return false;
+		}
+
+		var actualPrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, argumentList.CloseParenToken.SpanStart));
+
+		if (actualPrefix.All(static character => character is ' ' or '\t')) {
+			return false;
+		}
+
+		var receiverLine = text.Lines.GetLineFromPosition(memberAccess.Expression.SpanStart);
+		var closeIndent = GetLineIndentation(text, receiverLine);
+		var itemIndent = GetLineIndentation(text, openLine);
+		var builder = new StringBuilder();
+		builder.Append(lineBreak);
+		builder.Append(itemIndent);
+		builder.Append(argument.ToString());
+		builder.Append(lineBreak);
+		builder.Append(closeIndent);
+
+		var changes = new List<TextChange> {
+			new(
+				TextSpan.FromBounds(memberAccess.Expression.Span.End, memberAccess.OperatorToken.SpanStart),
+				string.Empty
+			),
+			new(
+				TextSpan.FromBounds(argumentList.OpenParenToken.Span.End, argumentList.CloseParenToken.SpanStart),
+				builder.ToString()
+			),
+		};
+
+		fixedText = text.WithChanges(changes.OrderBy(static change => change.Span.Start));
+		return true;
 	}
 
 	private static bool TryExpandSplitList(
@@ -287,8 +362,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		return text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character));
 	}
 
-	private static bool IsDefaultOrMissing(SyntaxToken token) =>
-		token.RawKind == 0 || token.IsMissing;
+	private static bool IsDefaultOrMissing(SyntaxToken token) => token.RawKind == 0 || token.IsMissing;
 
 	private static bool TryGetParameterListContinuationToken(
 		ParameterListSyntax node,
@@ -713,6 +787,72 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		return GetLineBreak(text);
+	}
+
+	private static int GetMaxLineLength(
+		Document document,
+		SyntaxTree tree
+	) {
+		var options = document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider.GetOptions(tree);
+
+		if (
+			options.TryGetValue("max_line_length", out var value)
+			&& int.TryParse(value, out var maxLineLength)
+			&& maxLineLength > 0
+		) {
+			return maxLineLength;
+		}
+
+		return DefaultMaxLineLength;
+	}
+
+	private static bool CanMoveInvocationToReceiverLine(
+		SourceText text,
+		MemberAccessExpressionSyntax memberAccess,
+		SyntaxToken openParen,
+		int maxLineLength
+	) {
+		var receiverLine = text.Lines.GetLineFromPosition(memberAccess.Expression.SpanStart);
+		var dotLine = text.Lines.GetLineFromPosition(memberAccess.OperatorToken.SpanStart);
+
+		if (receiverLine.LineNumber == dotLine.LineNumber) {
+			return false;
+		}
+
+		var gapSpan = TextSpan.FromBounds(memberAccess.Expression.Span.End, memberAccess.OperatorToken.SpanStart);
+
+		if (!text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character))) {
+			return false;
+		}
+
+		var receiverText = text.ToString(TextSpan.FromBounds(receiverLine.Start, memberAccess.Expression.Span.End));
+		var invocationText = text.ToString(TextSpan.FromBounds(memberAccess.OperatorToken.SpanStart, openParen.Span.End));
+
+		return receiverText.Length + invocationText.Length <= maxLineLength;
+	}
+
+	private static bool TryGetFirstInvocationMemberAccess(
+		ArgumentListSyntax node,
+		out MemberAccessExpressionSyntax memberAccess
+	) {
+		memberAccess = null!;
+
+		if (node.Parent is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax value }) {
+			return false;
+		}
+
+		var memberName = value.Name switch {
+			GenericNameSyntax genericName => genericName.Identifier.ValueText,
+			IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
+			_ => string.Empty,
+		};
+
+		if (!memberName.StartsWith("First", StringComparison.Ordinal)) {
+			return false;
+		}
+
+		memberAccess = value;
+		return true;
 	}
 
 	private static bool TryGetExpressionBody(

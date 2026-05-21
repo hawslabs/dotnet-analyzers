@@ -24,8 +24,7 @@ public sealed class ReturnRawStringLiteralAnalyzer : DiagnosticAnalyzer {
 			+ "should start on the line after return and be indented one level deeper."
 	);
 
-	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-		ImmutableArray.Create(Rule);
+	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
 	public override void Initialize(AnalysisContext context) {
 		context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

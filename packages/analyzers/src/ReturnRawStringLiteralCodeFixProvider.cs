@@ -14,11 +14,9 @@ namespace HawsLabs.Analyzers;
 public sealed class ReturnRawStringLiteralCodeFixProvider : CodeFixProvider {
 	private const string Title = "Format multiline raw string literal";
 
-	public override ImmutableArray<string> FixableDiagnosticIds =>
-		ImmutableArray.Create(ReturnRawStringLiteralAnalyzer.DiagnosticId);
+	public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(ReturnRawStringLiteralAnalyzer.DiagnosticId);
 
-	public override FixAllProvider GetFixAllProvider() =>
-		WellKnownFixAllProviders.BatchFixer;
+	public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
 	public override Task RegisterCodeFixesAsync(CodeFixContext context) {
 		var diagnostic = context.Diagnostics[0];

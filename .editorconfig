@@ -1,21 +1,28 @@
 root = true
 
+
 [*]
 indent_style = space
 indent_size = 2
+max_line_length = 110
+indent_brace_style = 1TBS
+
 
 [*.{slnx,csproj,esproj,props,targets,xml,razor,json}]
 indent_style = tab
 indent_size = tab
 tab_width = 4
 
+
 [*.cs]
 indent_style = tab
 indent_size = tab
 tab_width = 4
 
-dotnet_diagnostic.IDE0011.severity = error
-dotnet_diagnostic.IDE0055.severity = error
+
+###############################################################################
+# CSharp formatting options
+###############################################################################
 
 # https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/csharp-formatting-options#new-line-options
 csharp_prefer_braces = true:error
@@ -27,3 +34,14 @@ csharp_new_line_before_members_in_object_initializers = false
 csharp_new_line_before_members_in_anonymous_types = false
 csharp_new_line_between_query_expression_clauses = false
 
+
+dotnet_diagnostic.IDE0011.severity = error
+
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/ide0055
+# All formatting options have rule ID IDE0055 and the title "Fix formatting".
+dotnet_diagnostic.IDE0055.severity = error
+
+
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/ide2006
+csharp_style_allow_blank_line_after_token_in_arrow_expression_clause_experimental = false
+dotnet_diagnostic.IDE2006.severity = warning

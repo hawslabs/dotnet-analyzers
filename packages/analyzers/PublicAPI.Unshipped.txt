@@ -1,4 +1,9 @@
 #nullable enable
+HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer
+HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.OneTrueBraceStyleAnalyzer() -> void
+const HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.DiagnosticId = "HA0003" -> string!
+override HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
+override HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
 HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer
 HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.ReturnRawStringLiteralAnalyzer() -> void
 const HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.DiagnosticId = "HA0002" -> string!
