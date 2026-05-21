@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Composition;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -76,6 +77,10 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		var actualPrefix = text.ToString(actualPrefixSpan);
 		var lineBreak = GetLineBreak(text, closeLine);
 
+		if (TryExpandSplitList(text, closeParen, expectedIndent, lineBreak, out var expandedListText)) {
+			return document.WithText(expandedListText);
+		}
+
 		if (TryFixExpressionBodyArrowLine(text, closeParen, out var fixedExpressionBodyText)) {
 			return document.WithText(fixedExpressionBodyText);
 		}
@@ -122,6 +127,185 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		);
 
 		return document.WithText(fixedText);
+	}
+
+	private static bool TryExpandSplitList(
+		SourceText text,
+		SyntaxToken closeParen,
+		string expectedIndent,
+		string lineBreak,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (closeParen.Parent is ArgumentListSyntax argumentList) {
+			return TryExpandSeparatedList(
+				text,
+				argumentList.OpenParenToken,
+				argumentList.CloseParenToken,
+				argumentList.Arguments.Select(static argument => (SyntaxNode)argument).ToArray(),
+				argumentList.Arguments.GetSeparators().ToArray(),
+				expectedIndent,
+				lineBreak,
+				continuationToken: default,
+				fixedText: out fixedText
+			);
+		}
+
+		if (closeParen.Parent is ParameterListSyntax parameterList) {
+			TryGetParameterListContinuationToken(parameterList, out var continuationToken);
+
+			return TryExpandSeparatedList(
+				text,
+				parameterList.OpenParenToken,
+				parameterList.CloseParenToken,
+				parameterList.Parameters.Select(static parameter => (SyntaxNode)parameter).ToArray(),
+				parameterList.Parameters.GetSeparators().ToArray(),
+				expectedIndent,
+				lineBreak,
+				continuationToken,
+				out fixedText
+			);
+		}
+
+		return false;
+	}
+
+	private static bool TryExpandSeparatedList(
+		SourceText text,
+		SyntaxToken openParen,
+		SyntaxToken closeParen,
+		SyntaxNode[] items,
+		SyntaxToken[] separators,
+		string expectedIndent,
+		string lineBreak,
+		SyntaxToken continuationToken,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (
+			items.Length <= 1
+			|| openParen.IsMissing
+			|| closeParen.IsMissing
+			|| items.Any(static item => item.IsMissing)
+		) {
+			return false;
+		}
+
+		var openLineNumber = text.Lines.GetLineFromPosition(openParen.SpanStart).LineNumber;
+		var itemLineNumbers = items
+			.Select(item => text.Lines.GetLineFromPosition(item.GetFirstToken().SpanStart).LineNumber)
+			.ToArray();
+		var hasItemOnOpeningLine = itemLineNumbers.Any(lineNumber => lineNumber == openLineNumber);
+		var hasItemAfterOpeningLine = itemLineNumbers.Any(lineNumber => lineNumber != openLineNumber);
+		var hasContinuationAfterCloseParen = HasContinuationAfterCloseParen(text, closeParen, continuationToken);
+
+		if (
+			!hasItemOnOpeningLine
+			|| (!hasItemAfterOpeningLine && !hasContinuationAfterCloseParen)
+		) {
+			return false;
+		}
+
+		var itemIndent = GetContinuationIndent(text, openParen, items, continuationToken, expectedIndent);
+		var hasTrailingSeparator = separators.Length >= items.Length;
+		var builder = new StringBuilder();
+
+		for (var index = 0; index < items.Length; index++) {
+			builder.Append(lineBreak);
+			builder.Append(itemIndent);
+			builder.Append(items[index].ToString());
+
+			if (index < items.Length - 1 || hasTrailingSeparator) {
+				builder.Append(',');
+			}
+		}
+
+		builder.Append(lineBreak);
+		builder.Append(expectedIndent);
+
+		var changes = new List<TextChange> {
+			new(TextSpan.FromBounds(openParen.Span.End, closeParen.SpanStart), builder.ToString()),
+		};
+
+		if (hasContinuationAfterCloseParen) {
+			var gapSpan = TextSpan.FromBounds(closeParen.Span.End, continuationToken.SpanStart);
+			changes.Add(new TextChange(gapSpan, " "));
+		}
+
+		fixedText = text.WithChanges(changes.OrderBy(static change => change.Span.Start));
+		return true;
+	}
+
+	private static string GetContinuationIndent(
+		SourceText text,
+		SyntaxToken openParen,
+		SyntaxNode[] items,
+		SyntaxToken continuationToken,
+		string expectedIndent
+	) {
+		var openLineNumber = text.Lines.GetLineFromPosition(openParen.SpanStart).LineNumber;
+
+		foreach (var item in items) {
+			var itemLine = text.Lines.GetLineFromPosition(item.GetFirstToken().SpanStart);
+
+			if (itemLine.LineNumber != openLineNumber) {
+				return GetLineIndentation(text, itemLine);
+			}
+		}
+
+		if (!IsDefaultOrMissing(continuationToken)) {
+			var continuationLine = text.Lines.GetLineFromPosition(continuationToken.SpanStart);
+			var continuationIndent = GetLineIndentation(text, continuationLine);
+
+			if (continuationIndent.Length > expectedIndent.Length) {
+				return continuationIndent;
+			}
+		}
+
+		return expectedIndent + "\t";
+	}
+
+	private static bool HasContinuationAfterCloseParen(
+		SourceText text,
+		SyntaxToken closeParen,
+		SyntaxToken continuationToken
+	) {
+		if (IsDefaultOrMissing(continuationToken)) {
+			return false;
+		}
+
+		var closeLine = text.Lines.GetLineFromPosition(closeParen.SpanStart);
+		var continuationLine = text.Lines.GetLineFromPosition(continuationToken.SpanStart);
+
+		if (closeLine.LineNumber == continuationLine.LineNumber) {
+			return false;
+		}
+
+		var gapSpan = TextSpan.FromBounds(closeParen.Span.End, continuationToken.SpanStart);
+		return text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character));
+	}
+
+	private static bool IsDefaultOrMissing(SyntaxToken token) =>
+		token.RawKind == 0 || token.IsMissing;
+
+	private static bool TryGetParameterListContinuationToken(
+		ParameterListSyntax node,
+		out SyntaxToken continuationToken
+	) {
+		if (TryGetBaseList(node, out var baseList) && !baseList.ColonToken.IsMissing) {
+			continuationToken = baseList.ColonToken;
+			return true;
+		}
+
+		if (TryGetExpressionBody(node, out var expressionBody) && !expressionBody.ArrowToken.IsMissing) {
+			continuationToken = expressionBody.ArrowToken;
+			return true;
+		}
+
+		continuationToken = default;
+		return false;
 	}
 
 	private static bool TryFixExpressionBodyArrowLine(

@@ -391,6 +391,69 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 	}
 
 	[Fact]
+	public Task ExpandsArgumentListWhenLaterArgumentMovesToNewLine() {
+		return VerifyCodeFixAsync(
+			InMethodBody(
+				"""
+				CallTarget(1,
+					2[|)|];
+				"""
+			),
+			InMethodBody(
+				"""
+				CallTarget(
+					1,
+					2
+				);
+				"""
+			)
+		);
+	}
+
+	[Fact]
+	public Task ExpandsPrimaryConstructorParameterListWhenBaseListMovesToNewLine() {
+		return VerifyCodeFixAsync(
+			"""
+			namespace System.Runtime.CompilerServices {
+				internal static class IsExternalInit {
+				}
+			}
+
+			namespace TestCode {
+				using System;
+
+				public interface IFrontendRoutedMessage {
+				}
+
+				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason[|)|]
+					: IFrontendRoutedMessage {
+				}
+			}
+			""",
+			"""
+			namespace System.Runtime.CompilerServices {
+				internal static class IsExternalInit {
+				}
+			}
+
+			namespace TestCode {
+				using System;
+
+				public interface IFrontendRoutedMessage {
+				}
+
+				public record CloudRouteUnavailable(
+					Guid InstallationId,
+					string MessageType,
+					string Reason
+				) : IFrontendRoutedMessage {
+				}
+			}
+			"""
+		);
+	}
+
+	[Fact]
 	public Task MovesExpressionBodiedMethodArrowToClosingParenLine() {
 		return VerifyCodeFixAsync(
 			InType(

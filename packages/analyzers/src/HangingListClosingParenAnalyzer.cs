@@ -48,6 +48,11 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			node.OpenParenToken,
 			node.CloseParenToken,
 			node.Arguments[0].GetFirstToken()
+		) || AnalyzeSplitListItems(
+			context,
+			node.OpenParenToken,
+			node.CloseParenToken,
+			node.Arguments.Select(static argument => argument.GetFirstToken()).ToArray()
 		);
 
 		if (!reportedClosingParen) {
@@ -67,6 +72,11 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			node.OpenParenToken,
 			node.CloseParenToken,
 			node.Parameters[0].GetFirstToken()
+		) || AnalyzeSplitListItems(
+			context,
+			node.OpenParenToken,
+			node.CloseParenToken,
+			node.Parameters.Select(static parameter => parameter.GetFirstToken()).ToArray()
 		);
 
 		if (!reportedClosingParen) {
@@ -120,6 +130,44 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		var actualPrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, closeParen.SpanStart));
 
 		if (actualPrefix == expectedIndent) {
+			return false;
+		}
+
+		context.ReportDiagnostic(Diagnostic.Create(Rule, closeParen.GetLocation()));
+		return true;
+	}
+
+	private static bool AnalyzeSplitListItems(
+		SyntaxNodeAnalysisContext context,
+		SyntaxToken openParen,
+		SyntaxToken closeParen,
+		SyntaxToken[] itemTokens
+	) {
+		if (
+			itemTokens.Length <= 1
+			|| openParen.IsMissing
+			|| closeParen.IsMissing
+			|| itemTokens.Any(static token => token.IsMissing)
+		) {
+			return false;
+		}
+
+		var tree = closeParen.SyntaxTree;
+
+		if (tree is null) {
+			return false;
+		}
+
+		var text = tree.GetText(context.CancellationToken);
+		var openLineNumber = text.Lines.GetLineFromPosition(openParen.SpanStart).LineNumber;
+		var itemLineNumbers = itemTokens
+			.Select(token => text.Lines.GetLineFromPosition(token.SpanStart).LineNumber)
+			.ToArray();
+
+		if (
+			!itemLineNumbers.Any(lineNumber => lineNumber == openLineNumber)
+			|| !itemLineNumbers.Any(lineNumber => lineNumber != openLineNumber)
+		) {
 			return false;
 		}
 
@@ -261,11 +309,20 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		var firstItemLine = text.Lines.GetLineFromPosition(firstItemToken.SpanStart);
 		var colonLine = text.Lines.GetLineFromPosition(baseList.ColonToken.SpanStart);
 
-		if (openLine.LineNumber == closeLine.LineNumber) {
+		if (
+			openLine.LineNumber == closeLine.LineNumber
+			&& (
+				node.Parameters.Count <= 1
+				|| colonLine.LineNumber == closeLine.LineNumber
+			)
+		) {
 			return;
 		}
 
-		if (firstItemLine.LineNumber == openLine.LineNumber) {
+		if (
+			firstItemLine.LineNumber == openLine.LineNumber
+			&& openLine.LineNumber != closeLine.LineNumber
+		) {
 			return;
 		}
 

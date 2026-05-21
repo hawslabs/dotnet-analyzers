@@ -27,6 +27,39 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 	}
 
 	[Fact]
+	public Task ReportsDiagnosticWhenLaterArgumentMovesToNewLine() {
+		return VerifyAnalyzerAsync(InMethodBody(
+			"""
+			CallTarget(1,
+				2[|)|];
+			"""
+		));
+	}
+
+	[Fact]
+	public Task ReportsDiagnosticForPrimaryConstructorWithBaseListOnNextLineWhenParametersShareOpeningLine() {
+		return VerifyAnalyzerAsync(
+			"""
+			namespace System.Runtime.CompilerServices {
+				internal static class IsExternalInit {
+				}
+			}
+
+			namespace TestCode {
+				using System;
+
+				public interface IFrontendRoutedMessage {
+				}
+
+				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason[|)|]
+					: IFrontendRoutedMessage {
+				}
+			}
+			"""
+		);
+	}
+
+	[Fact]
 	public Task ReportsDiagnosticForExpressionBodiedMethodWithArrowOnNextLine() {
 		return VerifyAnalyzerAsync(InType(
 			"""
@@ -92,11 +125,11 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 	}
 
 	[Fact]
-	public Task DoesNotReportDiagnosticWhenFirstArgumentStaysOnOpeningLine() {
+	public Task ReportsDiagnosticWhenFirstArgumentStaysOnOpeningLineAndLaterArgumentMovesToNewLine() {
 		return VerifyAnalyzerAsync(InMethodBody(
 			"""
 			CallTarget(1,
-				2);
+				2[|)|];
 			"""
 		));
 	}
