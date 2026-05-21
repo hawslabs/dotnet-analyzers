@@ -77,12 +77,6 @@
     <_UsesMajorVersion Condition="'$(_UsesMajorVersion)' == ''">false</_UsesMajorVersion>
   </PropertyGroup>
 
-  <ItemGroup Condition="'@(ProjectReference)' != ''">
-    <ProjectReference Update="@(ProjectReference)">
-      <AdditionalProperties>%(ProjectReference.AdditionalProperties);VersionTimestamp=$(VersionTimestamp)</AdditionalProperties>
-    </ProjectReference>
-  </ItemGroup>
-
   <!-- Copyright (in targets so $(Company) reflects any consumer override) -->
   <PropertyGroup Condition="'$(CompanyMetadataEnabled)' == 'true' and '$(Copyright)' == ''">
     <!-- Deterministic copyright for CI using SourceRevisionTimestamp -->
