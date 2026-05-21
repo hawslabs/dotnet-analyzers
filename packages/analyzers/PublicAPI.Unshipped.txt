@@ -1,12 +1,15 @@
 #nullable enable
 HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer
 HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.OneTrueBraceStyleAnalyzer() -> void
-const HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.DiagnosticId = "HA0003" -> string!
+const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.ParameterListContinuationDiagnosticId = "HA9002" -> string!
+const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.ShortFirstCallDiagnosticId = "HA9003" -> string!
+const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.SplitListItemsDiagnosticId = "HA9001" -> string!
+const HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.DiagnosticId = "HA9005" -> string!
 override HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
 override HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
 HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer
 HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.ReturnRawStringLiteralAnalyzer() -> void
-const HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.DiagnosticId = "HA0002" -> string!
+const HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.DiagnosticId = "HA9004" -> string!
 override HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
 override HawsLabs.Analyzers.ReturnRawStringLiteralAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
 HawsLabs.Analyzers.ReturnRawStringLiteralCodeFixProvider

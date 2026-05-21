@@ -24,7 +24,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 			CallTarget(
 				1,
 				2);
-			"""[|)|]);
+			"""{|HA9000:)|});
 				}
 			}
 			"""",
@@ -77,7 +77,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 				2
 			);
 			"""
-			[|)|]);
+			{|HA9000:)|});
 				}
 			}
 			"""",
@@ -132,7 +132,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 				1,
 				2
 			));
-			[|"""|],
+			{|HA9000:"""|},
 							"""
 							private static void CallWithFactory(Func<int> factory) {
 							}
@@ -203,7 +203,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 					return VerifyAnalyzerAsync(InMethodBody(
 						"""
 			CallTarget(1, 2);
-			"""[|)|]);
+			"""{|HA9000:)|});
 				}
 			}
 			"""",
@@ -253,7 +253,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 				int first,
 				int second) {
 			}
-			"""[|)|]);
+			"""{|HA9000:)|});
 				}
 			}
 			"""",
@@ -353,7 +353,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 				"""
 				CallTarget(
 					1,
-					2[|)|];
+					2{|HA9000:)|};
 				"""
 			),
 			InMethodBody(
@@ -374,7 +374,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 				"""
 				private static void Test(
 					int first,
-					int second[|)|] {
+					int second{|HA9000:)|} {
 				}
 				"""
 			),
@@ -396,7 +396,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 			InMethodBody(
 				"""
 				CallTarget(1,
-					2[|)|];
+					2{|HA9001:)|};
 				"""
 			),
 			InMethodBody(
@@ -425,7 +425,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 							WolverineMessageNaming.ToMessageTypeName(type),
 							messageTypeName,
 							StringComparison.Ordinal
-						)[|)|]!;
+						){|HA9003:)|}!;
 				}
 
 				private static class ServiceBusMessageRegistry {
@@ -480,7 +480,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 				public interface IFrontendRoutedMessage {
 				}
 
-				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason[|)|]
+				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason{|HA9002:)|}
 					: IFrontendRoutedMessage {
 				}
 			}
@@ -536,7 +536,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 					string resourceName,
 					TimeSpan timeout,
 					System.Threading.CancellationToken cancellationToken = default
-				[|)|]
+				{|HA9002:)|}
 					=> app.ResourceNotifications
 						.WaitForResourceHealthyAsync(resourceName, cancellationToken)
 						.WaitAsync(timeout, cancellationToken);
@@ -593,7 +593,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 
 				while (
 					index < lineText.Length
-					&& (lineText[index] == ' ' || lineText[index] == '\t')[|)|] {
+					&& (lineText[index] == ' ' || lineText[index] == '\t'){|HA9000:)|} {
 					index++;
 				}
 				"""
@@ -622,7 +622,7 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 				CallTarget(
 					1,
 					2
-						[|)|];
+						{|HA9000:)|};
 				"""
 			),
 			InMethodBody(

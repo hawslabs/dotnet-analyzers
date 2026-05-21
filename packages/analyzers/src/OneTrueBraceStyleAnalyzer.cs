@@ -7,13 +7,13 @@ namespace HawsLabs.Analyzers;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class OneTrueBraceStyleAnalyzer : DiagnosticAnalyzer {
-	public const string DiagnosticId = "HA0003";
+	public const string DiagnosticId = DiagnosticIds.OneTrueBraceStyle;
 
 	private static readonly DiagnosticDescriptor Rule = new(
 		id: DiagnosticId,
 		title: "Keep 1TBS brace settings consistent",
 		messageFormat: "indent_brace_style={0} requires '{1} = {3}', but the effective value is '{2}'",
-		category: "Formatting",
+		category: DiagnosticCategories.Style,
 		defaultSeverity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description:
@@ -96,7 +96,7 @@ public sealed class OneTrueBraceStyleAnalyzer : DiagnosticAnalyzer {
 		Location location,
 		string braceStyle
 	) {
-		var actual = TryGetTrimmedValue(options, "csharp_prefer_braces", out var rawValue)
+		var actual = options.TryGetTrimmedValue("csharp_prefer_braces", out var rawValue)
 			? rawValue
 			: "<missing>";
 
@@ -188,8 +188,8 @@ public sealed class OneTrueBraceStyleAnalyzer : DiagnosticAnalyzer {
 		out string severity
 	) {
 		if (
-			TryGetTrimmedValue(options, "dotnet_diagnostic.IDE0011.severity", out severity)
-			|| TryGetTrimmedValue(globalOptions, "dotnet_diagnostic.IDE0011.severity", out severity)
+			options.TryGetTrimmedValue("dotnet_diagnostic.IDE0011.severity", out severity)
+			|| globalOptions.TryGetTrimmedValue("dotnet_diagnostic.IDE0011.severity", out severity)
 		) {
 			return true;
 		}
@@ -245,19 +245,6 @@ public sealed class OneTrueBraceStyleAnalyzer : DiagnosticAnalyzer {
 		return true;
 	}
 
-	private static bool TryGetTrimmedValue(AnalyzerConfigOptions options, string name, out string value) {
-		if (
-			!options.TryGetValue(name, out var rawValue)
-			&& !options.TryGetValue(name.ToLowerInvariant(), out rawValue)
-		) {
-			value = string.Empty;
-			return false;
-		}
-
-		value = rawValue.Trim();
-		return true;
-	}
-
 	private static Location GetDiagnosticLocation(SyntaxTreeAnalysisContext context) {
 		var root = context.Tree.GetRoot(context.CancellationToken);
 		var firstToken = root.GetFirstToken();
@@ -280,7 +267,7 @@ public sealed class OneTrueBraceStyleAnalyzer : DiagnosticAnalyzer {
 		public string Value { get; }
 
 		public string GetActualValue(AnalyzerConfigOptions options) {
-			return TryGetTrimmedValue(options, Name, out var actualValue) ? actualValue : "<missing>";
+			return options.TryGetTrimmedValue(Name, out var actualValue) ? actualValue : "<missing>";
 		}
 	}
 }

@@ -9,14 +9,17 @@ namespace HawsLabs.Analyzers;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
-	public const string DiagnosticId = "HA0001";
+	public const string DiagnosticId = DiagnosticIds.HangingListClosingParen;
+	public const string SplitListItemsDiagnosticId = DiagnosticIds.SplitListItems;
+	public const string ParameterListContinuationDiagnosticId = DiagnosticIds.ParameterListContinuation;
+	public const string ShortFirstCallDiagnosticId = DiagnosticIds.ShortFirstCall;
 	private const int DefaultMaxLineLength = 110;
 
 	private static readonly DiagnosticDescriptor Rule = new(
 		id: DiagnosticId,
 		title: "Put hanging-list closing parenthesis on its own line",
 		messageFormat: "Closing parenthesis for a hanging multiline list should be on its own line and aligned with the opening line",
-		category: "Formatting",
+		category: DiagnosticCategories.Style,
 		defaultSeverity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description:
@@ -25,7 +28,48 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			+ "level as the line containing the opening parenthesis."
 	);
 
-	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+	private static readonly DiagnosticDescriptor SplitListItemsRule = new(
+		id: SplitListItemsDiagnosticId,
+		title: "Put split list items on separate lines",
+		messageFormat: "List items should not be split between the opening line and later lines",
+		category: DiagnosticCategories.Style,
+		defaultSeverity: DiagnosticSeverity.Warning,
+		isEnabledByDefault: true,
+		description:
+			"When an argument or parameter list wraps across lines, each item should start on its own line "
+			+ "instead of leaving the first item beside the opening parenthesis."
+	);
+
+	private static readonly DiagnosticDescriptor ParameterListContinuationRule = new(
+		id: ParameterListContinuationDiagnosticId,
+		title: "Keep parameter-list continuations with the closing parenthesis",
+		messageFormat: "Parameter-list continuation should stay on the closing parenthesis line",
+		category: DiagnosticCategories.Style,
+		defaultSeverity: DiagnosticSeverity.Warning,
+		isEnabledByDefault: true,
+		description:
+			"Expression-bodied members and primary-constructor base lists should keep their continuation token "
+			+ "on the same line as the parameter-list closing parenthesis."
+	);
+
+	private static readonly DiagnosticDescriptor ShortFirstCallRule = new(
+		id: ShortFirstCallDiagnosticId,
+		title: "Keep short First calls with their receiver",
+		messageFormat: "Short First invocation should stay with its receiver and place the multiline argument on following lines",
+		category: DiagnosticCategories.Style,
+		defaultSeverity: DiagnosticSeverity.Warning,
+		isEnabledByDefault: true,
+		description:
+			"Short chained First* invocations that can fit on the receiver line should keep the invocation with "
+			+ "the receiver and move the multiline argument body onto following lines."
+	);
+
+	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
+		Rule,
+		SplitListItemsRule,
+		ParameterListContinuationRule,
+		ShortFirstCallRule
+	);
 
 	public override void Initialize(AnalysisContext context) {
 		context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -71,7 +115,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			node.Arguments.Count != 1
 			|| node.OpenParenToken.IsMissing
 			|| node.CloseParenToken.IsMissing
-			|| !TryGetFirstInvocationMemberAccess(node, out var memberAccess)
+			|| !node.TryGetFirstInvocationMemberAccess(out var memberAccess)
 		) {
 			return false;
 		}
@@ -116,7 +160,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			return false;
 		}
 
-		context.ReportDiagnostic(Diagnostic.Create(Rule, node.CloseParenToken.GetLocation()));
+		context.ReportDiagnostic(Diagnostic.Create(ShortFirstCallRule, node.CloseParenToken.GetLocation()));
 		return true;
 	}
 
@@ -186,7 +230,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			return false;
 		}
 
-		var expectedIndent = GetLineIndentation(text, openLine);
+		var expectedIndent = text.GetLineIndentation(openLine);
 		var actualPrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, closeParen.SpanStart));
 
 		if (actualPrefix == expectedIndent) {
@@ -231,7 +275,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			return false;
 		}
 
-		context.ReportDiagnostic(Diagnostic.Create(Rule, closeParen.GetLocation()));
+		context.ReportDiagnostic(Diagnostic.Create(SplitListItemsRule, closeParen.GetLocation()));
 		return true;
 	}
 
@@ -268,7 +312,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			return;
 		}
 
-		var expectedCloseIndent = GetLineIndentation(text, openLine);
+		var expectedCloseIndent = text.GetLineIndentation(openLine);
 		var actualClosePrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, node.CloseParenToken.SpanStart));
 
 		if (actualClosePrefix != expectedCloseIndent) {
@@ -292,7 +336,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			node.OpenParenToken.IsMissing
 			|| node.CloseParenToken.IsMissing
 			|| node.Parameters.Count == 0
-			|| !TryGetExpressionBody(node, out var expressionBody)
+			|| !node.TryGetExpressionBody(out var expressionBody)
 			|| expressionBody.ArrowToken.IsMissing
 		) {
 			return;
@@ -330,11 +374,11 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 
 		var gapSpan = TextSpan.FromBounds(node.CloseParenToken.Span.End, expressionBody.ArrowToken.SpanStart);
 
-		if (!text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character))) {
+		if (!text.IsWhiteSpace(gapSpan)) {
 			return;
 		}
 
-		context.ReportDiagnostic(Diagnostic.Create(Rule, node.CloseParenToken.GetLocation()));
+		context.ReportDiagnostic(Diagnostic.Create(ParameterListContinuationRule, node.CloseParenToken.GetLocation()));
 	}
 
 	private static void AnalyzeBaseListParameterList(
@@ -345,7 +389,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			node.OpenParenToken.IsMissing
 			|| node.CloseParenToken.IsMissing
 			|| node.Parameters.Count == 0
-			|| !TryGetBaseList(node, out var baseList)
+			|| !node.TryGetBaseList(out var baseList)
 			|| baseList.ColonToken.IsMissing
 		) {
 			return;
@@ -392,11 +436,11 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 
 		var gapSpan = TextSpan.FromBounds(node.CloseParenToken.Span.End, baseList.ColonToken.SpanStart);
 
-		if (!text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character))) {
+		if (!text.IsWhiteSpace(gapSpan)) {
 			return;
 		}
 
-		context.ReportDiagnostic(Diagnostic.Create(Rule, node.CloseParenToken.GetLocation()));
+		context.ReportDiagnostic(Diagnostic.Create(ParameterListContinuationRule, node.CloseParenToken.GetLocation()));
 	}
 
 	private static void AnalyzeRawStringLiteralArgument(
@@ -404,11 +448,11 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		SourceText text,
 		SyntaxToken token
 	) {
-		if (!TryGetMultilineRawStringDelimiter(token, out var delimiter)) {
+		if (!RawStringLiteralInfo.TryCreate(token, out var rawString)) {
 			return;
 		}
 
-		var closingDelimiterStart = token.Span.End - delimiter.Length;
+		var closingDelimiterStart = rawString.ClosingDelimiterStart;
 
 		if (closingDelimiterStart < token.SpanStart) {
 			return;
@@ -421,8 +465,8 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			return;
 		}
 
-		var expectedIndent = GetLineIndentation(text, openingLine);
-		var actualIndent = GetLineIndentation(text, closingLine);
+		var expectedIndent = text.GetLineIndentation(openingLine);
+		var actualIndent = text.GetLineIndentation(closingLine);
 
 		if (actualIndent == expectedIndent) {
 			return;
@@ -433,24 +477,10 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 				Rule,
 				Location.Create(
 					context.Node.SyntaxTree,
-					new TextSpan(closingDelimiterStart, delimiter.Length)
+					new TextSpan(closingDelimiterStart, rawString.Delimiter.Length)
 				)
 			)
 		);
-	}
-
-	private static string GetLineIndentation(SourceText text, TextLine line) {
-		var lineText = text.ToString(TextSpan.FromBounds(line.Start, line.End));
-		var index = 0;
-
-		while (
-			index < lineText.Length
-			&& (lineText[index] == ' ' || lineText[index] == '\t')
-		) {
-			index++;
-		}
-
-		return lineText.Substring(0, index);
 	}
 
 	private static int GetMaxLineLength(
@@ -459,11 +489,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 	) {
 		var options = context.Options.AnalyzerConfigOptionsProvider.GetOptions(tree);
 
-		if (
-			options.TryGetValue("max_line_length", out var value)
-			&& int.TryParse(value, out var maxLineLength)
-			&& maxLineLength > 0
-		) {
+		if (options.TryGetPositiveInt32("max_line_length", out var maxLineLength)) {
 			return maxLineLength;
 		}
 
@@ -485,7 +511,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 
 		var gapSpan = TextSpan.FromBounds(memberAccess.Expression.Span.End, memberAccess.OperatorToken.SpanStart);
 
-		if (!text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character))) {
+		if (!text.IsWhiteSpace(gapSpan)) {
 			return false;
 		}
 
@@ -495,78 +521,4 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 		return receiverText.Length + invocationText.Length <= maxLineLength;
 	}
 
-	private static bool TryGetFirstInvocationMemberAccess(
-		ArgumentListSyntax node,
-		out MemberAccessExpressionSyntax memberAccess
-	) {
-		memberAccess = null!;
-
-		if (node.Parent is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax value }) {
-			return false;
-		}
-
-		var memberName = value.Name switch {
-			GenericNameSyntax genericName => genericName.Identifier.ValueText,
-			IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
-			_ => string.Empty,
-		};
-
-		if (!memberName.StartsWith("First", StringComparison.Ordinal)) {
-			return false;
-		}
-
-		memberAccess = value;
-		return true;
-	}
-
-	private static bool TryGetMultilineRawStringDelimiter(
-		SyntaxToken token,
-		out string delimiter
-	) {
-		delimiter = string.Empty;
-
-		var tokenText = token.Text;
-		var delimiterLength = 0;
-
-		while (delimiterLength < tokenText.Length && tokenText[delimiterLength] == '"') {
-			delimiterLength++;
-		}
-
-		if (delimiterLength < 3) {
-			return false;
-		}
-
-		delimiter = tokenText.Substring(0, delimiterLength);
-
-		return tokenText.EndsWith(delimiter, StringComparison.Ordinal)
-			&& tokenText.Any(static character => character is '\r' or '\n');
-	}
-
-	private static bool TryGetExpressionBody(
-		ParameterListSyntax node,
-		out ArrowExpressionClauseSyntax expressionBody
-	) {
-		expressionBody = node.Parent switch {
-			ConstructorDeclarationSyntax { ExpressionBody: { } value } => value,
-			ConversionOperatorDeclarationSyntax { ExpressionBody: { } value } => value,
-			LocalFunctionStatementSyntax { ExpressionBody: { } value } => value,
-			MethodDeclarationSyntax { ExpressionBody: { } value } => value,
-			OperatorDeclarationSyntax { ExpressionBody: { } value } => value,
-			_ => null!,
-		};
-
-		return expressionBody is not null;
-	}
-
-	private static bool TryGetBaseList(
-		ParameterListSyntax node,
-		out BaseListSyntax baseList
-	) {
-		baseList = node.Parent switch {
-			TypeDeclarationSyntax { BaseList: { } value } => value,
-			_ => null!,
-		};
-
-		return baseList is not null;
-	}
 }

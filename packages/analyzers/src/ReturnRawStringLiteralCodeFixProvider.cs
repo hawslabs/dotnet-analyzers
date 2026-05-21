@@ -48,13 +48,13 @@ public sealed class ReturnRawStringLiteralCodeFixProvider : CodeFixProvider {
 		var rawStringExpression = targetToken.Parent?
 			.AncestorsAndSelf()
 			.OfType<ExpressionSyntax>()
-			.FirstOrDefault(static expression => TryGetMultilineRawStringExpression(expression, out _));
+			.FirstOrDefault(static expression => RawStringLiteralInfo.TryCreate(expression, out _));
 
 		if (rawStringExpression is null) {
 			return document;
 		}
 
-		if (!TryGetMultilineRawStringExpression(rawStringExpression, out var rawString)) {
+		if (!RawStringLiteralInfo.TryCreate(rawStringExpression, out var rawString)) {
 			return document;
 		}
 
@@ -77,14 +77,14 @@ public sealed class ReturnRawStringLiteralCodeFixProvider : CodeFixProvider {
 		}
 
 		if (!openingIndentSpan.IsEmpty) {
-			changes.Add(new TextChange(openingIndentSpan, GetLineBreak(text) + expectedRawStringIndent));
+			changes.Add(new TextChange(openingIndentSpan, text.GetLineBreak() + expectedRawStringIndent));
 		}
 
 		var currentRawStringIndent = text.ToString(TextSpan.FromBounds(closingLine.Start, rawString.ClosingDelimiterStart));
 
 		if (currentRawStringIndent != expectedRawStringIndent) {
 			if (
-				!TryAddRawStringContentIndentChanges(
+				!RawStringLiteralIndentation.TryAddContentIndentChanges(
 					text,
 					openingLine.LineNumber + 1,
 					closingLine.LineNumber,
@@ -110,7 +110,7 @@ public sealed class ReturnRawStringLiteralCodeFixProvider : CodeFixProvider {
 	private static bool TryGetExpectedRawStringIndent(
 		ExpressionSyntax expression,
 		SourceText text,
-		RawStringExpression rawString,
+		RawStringLiteralInfo rawString,
 		TextLine openingLine,
 		out string expectedRawStringIndent,
 		out TextSpan openingIndentSpan
@@ -142,148 +142,9 @@ public sealed class ReturnRawStringLiteralCodeFixProvider : CodeFixProvider {
 		}
 
 		var returnLine = text.Lines.GetLineFromPosition(returnStatement.ReturnKeyword.SpanStart);
-		var returnIndent = GetLineIndentation(text, returnLine);
-		expectedRawStringIndent = returnIndent + GetIndentUnit(returnIndent);
+		var returnIndent = text.GetLineIndentation(returnLine);
+		expectedRawStringIndent = returnIndent + IndentationStyle.GetIndentUnit(returnIndent);
 
 		return true;
-	}
-
-	private static bool TryGetMultilineRawStringExpression(
-		ExpressionSyntax expression,
-		out RawStringExpression rawString
-	) {
-		rawString = default;
-		var expressionText = expression.ToString();
-		var dollarCount = 0;
-
-		while (dollarCount < expressionText.Length && expressionText[dollarCount] == '$') {
-			dollarCount++;
-		}
-
-		var quoteCount = 0;
-
-		while (
-			dollarCount + quoteCount < expressionText.Length
-			&& expressionText[dollarCount + quoteCount] == '"'
-		) {
-			quoteCount++;
-		}
-
-		var delimiter = new string('"', quoteCount);
-
-		if (quoteCount < 3
-			|| !expressionText.EndsWith(delimiter, StringComparison.Ordinal)
-			|| !expressionText.Any(static character => character is '\r' or '\n')) {
-			return false;
-		}
-
-		rawString = new RawStringExpression(
-			expression.SpanStart,
-			expression.Span.End - quoteCount
-		);
-
-		return true;
-	}
-
-	private static bool TryAddRawStringContentIndentChanges(
-		SourceText text,
-		int firstContentLineNumber,
-		int closingLineNumber,
-		string currentRawStringIndent,
-		string expectedRawStringIndent,
-		List<TextChange> changes
-	) {
-		for (
-			var lineNumber = firstContentLineNumber;
-			lineNumber < closingLineNumber;
-			lineNumber++
-		) {
-			var line = text.Lines[lineNumber];
-			var lineText = text.ToString(TextSpan.FromBounds(line.Start, line.End));
-
-			if (lineText.Length == 0) {
-				continue;
-			}
-
-			if (currentRawStringIndent.Length == 0) {
-				changes.Add(new TextChange(new TextSpan(line.Start, 0), expectedRawStringIndent));
-				continue;
-			}
-
-			if (!lineText.StartsWith(currentRawStringIndent, StringComparison.Ordinal)) {
-				if (string.IsNullOrWhiteSpace(lineText)) {
-					continue;
-				}
-
-				return false;
-			}
-
-			changes.Add(
-				new TextChange(
-					new TextSpan(line.Start, currentRawStringIndent.Length),
-					expectedRawStringIndent
-				)
-			);
-		}
-
-		return true;
-	}
-
-	private static string GetLineIndentation(SourceText text, TextLine line) {
-		var lineText = text.ToString(TextSpan.FromBounds(line.Start, line.End));
-		var index = 0;
-
-		while (
-			index < lineText.Length
-			&& (lineText[index] == ' ' || lineText[index] == '\t')
-		) {
-			index++;
-		}
-
-		return lineText.Substring(0, index);
-	}
-
-	private static string GetIndentUnit(string lineIndent) {
-		if (lineIndent.Contains('\t')) {
-			return "\t";
-		}
-
-		if (lineIndent.Length >= 4 && lineIndent.Length % 4 == 0) {
-			return "    ";
-		}
-
-		if (lineIndent.Length >= 2 && lineIndent.Length % 2 == 0) {
-			return "  ";
-		}
-
-		if (lineIndent.Length > 0) {
-			return new string(' ', lineIndent.Length);
-		}
-
-		return "\t";
-	}
-
-	private static string GetLineBreak(SourceText text) {
-		foreach (var line in text.Lines) {
-			if (line.EndIncludingLineBreak > line.End) {
-				return text.ToString(TextSpan.FromBounds(line.End, line.EndIncludingLineBreak));
-			}
-		}
-
-		return "\r\n";
-	}
-
-	private readonly struct RawStringExpression {
-		public RawStringExpression(
-			int openingDelimiterStart,
-			int closingDelimiterStart
-		) {
-			OpeningDelimiterStart = openingDelimiterStart;
-			ClosingDelimiterStart = closingDelimiterStart;
-		}
-
-		public int OpeningDelimiterStart { get; }
-
-		public int ClosingDelimiterStart { get; }
 	}
 }

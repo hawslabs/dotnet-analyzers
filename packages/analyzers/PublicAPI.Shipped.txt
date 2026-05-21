@@ -1,7 +1,7 @@
 #nullable enable
 HawsLabs.Analyzers.HangingListClosingParenAnalyzer
 HawsLabs.Analyzers.HangingListClosingParenAnalyzer.HangingListClosingParenAnalyzer() -> void
-const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.DiagnosticId = "HA0001" -> string!
+const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.DiagnosticId = "HA9000" -> string!
 override HawsLabs.Analyzers.HangingListClosingParenAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
 override HawsLabs.Analyzers.HangingListClosingParenAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
 HawsLabs.Analyzers.HangingListClosingParenCodeFixProvider

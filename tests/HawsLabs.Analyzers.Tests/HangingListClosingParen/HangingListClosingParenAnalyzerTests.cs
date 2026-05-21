@@ -9,7 +9,7 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 			"""
 			CallTarget(
 				1,
-				2[|)|];
+				2{|HA9000:)|};
 			"""
 		));
 	}
@@ -20,7 +20,7 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 			"""
 			private static void Test(
 				int first,
-				int second[|)|] {
+				int second{|HA9000:)|} {
 			}
 			"""
 		));
@@ -31,7 +31,7 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 		return VerifyAnalyzerAsync(InMethodBody(
 			"""
 			CallTarget(1,
-				2[|)|];
+				2{|HA9001:)|};
 			"""
 		));
 	}
@@ -51,7 +51,7 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 				public interface IFrontendRoutedMessage {
 				}
 
-				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason[|)|]
+				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason{|HA9002:)|}
 					: IFrontendRoutedMessage {
 				}
 			}
@@ -86,7 +86,7 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 				string resourceName,
 				TimeSpan timeout,
 				System.Threading.CancellationToken cancellationToken = default
-			[|)|]
+			{|HA9002:)|}
 				=> app.ResourceNotifications
 					.WaitForResourceHealthyAsync(resourceName, cancellationToken)
 					.WaitAsync(timeout, cancellationToken);
@@ -108,7 +108,7 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 
 			while (
 				index < lineText.Length
-				&& (lineText[index] == ' ' || lineText[index] == '\t')[|)|] {
+				&& (lineText[index] == ' ' || lineText[index] == '\t'){|HA9000:)|} {
 				index++;
 			}
 			"""
@@ -129,7 +129,7 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 		return VerifyAnalyzerAsync(InMethodBody(
 			"""
 			CallTarget(1,
-				2[|)|];
+				2{|HA9001:)|};
 			"""
 		));
 	}

@@ -58,10 +58,10 @@ Use a `Topic | Value` metadata table near the top, modeled after the `IO0004` an
 
 | Topic | Value |
 | :-- | :-- |
-| Id | `HA0001` |
+| Id | `HA9000` |
 | Severity | Warning |
 | Enabled | True |
-| Category | Formatting |
+| Category | Style |
 | Code fix | Yes |
 | Analyzer | `HangingListClosingParenAnalyzer` |
 | Code fix provider | `HangingListClosingParenCodeFixProvider` |

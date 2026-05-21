@@ -16,7 +16,12 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 	private const string Title = "Format hanging-list closing parenthesis";
 	private const int DefaultMaxLineLength = 110;
 
-	public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(HangingListClosingParenAnalyzer.DiagnosticId);
+	public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(
+		HangingListClosingParenAnalyzer.DiagnosticId,
+		HangingListClosingParenAnalyzer.SplitListItemsDiagnosticId,
+		HangingListClosingParenAnalyzer.ParameterListContinuationDiagnosticId,
+		HangingListClosingParenAnalyzer.ShortFirstCallDiagnosticId
+	);
 
 	public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
@@ -71,10 +76,10 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		var openLine = text.Lines.GetLineFromPosition(openParen.SpanStart);
 		var closeLine = text.Lines.GetLineFromPosition(closeParen.SpanStart);
-		var expectedIndent = GetLineIndentation(text, openLine);
+		var expectedIndent = text.GetLineIndentation(openLine);
 		var actualPrefixSpan = TextSpan.FromBounds(closeLine.Start, closeParen.SpanStart);
 		var actualPrefix = text.ToString(actualPrefixSpan);
-		var lineBreak = GetLineBreak(text, closeLine);
+		var lineBreak = text.GetLineBreak(closeLine);
 		var maxLineLength = GetMaxLineLength(document, root.SyntaxTree);
 
 		if (TryExpandShortFirstCall(text, closeParen, lineBreak, maxLineLength, out var fixedFirstCallText)) {
@@ -146,7 +151,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			closeParen.Parent is not ArgumentListSyntax { Arguments.Count: 1 } argumentList
 			|| argumentList.OpenParenToken.IsMissing
 			|| argumentList.CloseParenToken.IsMissing
-			|| !TryGetFirstInvocationMemberAccess(argumentList, out var memberAccess)
+			|| !argumentList.TryGetFirstInvocationMemberAccess(out var memberAccess)
 			|| !CanMoveInvocationToReceiverLine(text, memberAccess, argumentList.OpenParenToken, maxLineLength)
 		) {
 			return false;
@@ -180,8 +185,8 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		var receiverLine = text.Lines.GetLineFromPosition(memberAccess.Expression.SpanStart);
-		var closeIndent = GetLineIndentation(text, receiverLine);
-		var itemIndent = GetLineIndentation(text, openLine);
+		var closeIndent = text.GetLineIndentation(receiverLine);
+		var itemIndent = text.GetLineIndentation(openLine);
 		var builder = new StringBuilder();
 		builder.Append(lineBreak);
 		builder.Append(itemIndent);
@@ -228,7 +233,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		if (closeParen.Parent is ParameterListSyntax parameterList) {
-			TryGetParameterListContinuationToken(parameterList, out var continuationToken);
+			parameterList.TryGetContinuationToken(out var continuationToken);
 
 			return TryExpandSeparatedList(
 				text,
@@ -326,13 +331,13 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			var itemLine = text.Lines.GetLineFromPosition(item.GetFirstToken().SpanStart);
 
 			if (itemLine.LineNumber != openLineNumber) {
-				return GetLineIndentation(text, itemLine);
+				return text.GetLineIndentation(itemLine);
 			}
 		}
 
-		if (!IsDefaultOrMissing(continuationToken)) {
+		if (!continuationToken.IsDefaultOrMissing()) {
 			var continuationLine = text.Lines.GetLineFromPosition(continuationToken.SpanStart);
-			var continuationIndent = GetLineIndentation(text, continuationLine);
+			var continuationIndent = text.GetLineIndentation(continuationLine);
 
 			if (continuationIndent.Length > expectedIndent.Length) {
 				return continuationIndent;
@@ -347,7 +352,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		SyntaxToken closeParen,
 		SyntaxToken continuationToken
 	) {
-		if (IsDefaultOrMissing(continuationToken)) {
+		if (continuationToken.IsDefaultOrMissing()) {
 			return false;
 		}
 
@@ -359,27 +364,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		var gapSpan = TextSpan.FromBounds(closeParen.Span.End, continuationToken.SpanStart);
-		return text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character));
-	}
-
-	private static bool IsDefaultOrMissing(SyntaxToken token) => token.RawKind == 0 || token.IsMissing;
-
-	private static bool TryGetParameterListContinuationToken(
-		ParameterListSyntax node,
-		out SyntaxToken continuationToken
-	) {
-		if (TryGetBaseList(node, out var baseList) && !baseList.ColonToken.IsMissing) {
-			continuationToken = baseList.ColonToken;
-			return true;
-		}
-
-		if (TryGetExpressionBody(node, out var expressionBody) && !expressionBody.ArrowToken.IsMissing) {
-			continuationToken = expressionBody.ArrowToken;
-			return true;
-		}
-
-		continuationToken = default;
-		return false;
+		return text.IsWhiteSpace(gapSpan);
 	}
 
 	private static bool TryFixExpressionBodyArrowLine(
@@ -391,7 +376,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		if (
 			closeParen.Parent is not ParameterListSyntax parameterList
-			|| !TryGetExpressionBody(parameterList, out var expressionBody)
+			|| !parameterList.TryGetExpressionBody(out var expressionBody)
 			|| expressionBody.ArrowToken.IsMissing
 		) {
 			return false;
@@ -405,9 +390,8 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		var gapSpan = TextSpan.FromBounds(closeParen.Span.End, expressionBody.ArrowToken.SpanStart);
-		var gapText = text.ToString(gapSpan);
 
-		if (!gapText.All(static character => char.IsWhiteSpace(character))) {
+		if (!text.IsWhiteSpace(gapSpan)) {
 			return false;
 		}
 
@@ -424,7 +408,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		if (
 			closeParen.Parent is not ParameterListSyntax parameterList
-			|| !TryGetBaseList(parameterList, out var baseList)
+			|| !parameterList.TryGetBaseList(out var baseList)
 			|| baseList.ColonToken.IsMissing
 		) {
 			return false;
@@ -438,9 +422,8 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		}
 
 		var gapSpan = TextSpan.FromBounds(closeParen.Span.End, baseList.ColonToken.SpanStart);
-		var gapText = text.ToString(gapSpan);
 
-		if (!gapText.All(static character => char.IsWhiteSpace(character))) {
+		if (!text.IsWhiteSpace(gapSpan)) {
 			return false;
 		}
 
@@ -461,7 +444,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		fixedText = text;
 
 		if (
-			!TryGetRawStringClosingDelimiter(
+			!RawStringLiteralIndentation.TryGetClosingDelimiter(
 				actualPrefix,
 				out var currentRawStringIndent,
 				out var rawStringDelimiter
@@ -472,17 +455,17 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		var rawStringToken = closeParen.GetPreviousToken();
 
-		if (!IsMultilineRawStringLiteral(rawStringToken, rawStringDelimiter)) {
+		if (!RawStringLiteralInfo.TryCreate(rawStringToken, out var rawString) || rawString.Delimiter != rawStringDelimiter) {
 			return false;
 		}
 
-		var openingLine = text.Lines.GetLineFromPosition(rawStringToken.SpanStart);
+		var openingLine = text.Lines.GetLineFromPosition(rawString.OpeningDelimiterStart);
 
 		if (openingLine.LineNumber == closeLine.LineNumber) {
 			return false;
 		}
 
-		var expectedRawStringIndent = GetLineIndentation(text, openingLine);
+		var expectedRawStringIndent = text.GetLineIndentation(openingLine);
 		var changes = new List<TextChange> {
 			new(
 				actualPrefixSpan,
@@ -492,7 +475,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		if (
 			expectedRawStringIndent != currentRawStringIndent
-			&& !TryAddRawStringContentIndentChanges(
+			&& !RawStringLiteralIndentation.TryAddContentIndentChanges(
 				text,
 				openingLine.LineNumber + 1,
 				closeLine.LineNumber,
@@ -524,17 +507,17 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		var rawStringToken = closeParen.GetPreviousToken();
 
-		if (!TryGetMultilineRawStringDelimiter(rawStringToken, out var rawStringDelimiter)) {
+		if (!RawStringLiteralInfo.TryCreate(rawStringToken, out var rawString)) {
 			return false;
 		}
 
-		var closingDelimiterStart = rawStringToken.Span.End - rawStringDelimiter.Length;
+		var closingDelimiterStart = rawString.ClosingDelimiterStart;
 
 		if (closingDelimiterStart < rawStringToken.SpanStart) {
 			return false;
 		}
 
-		var openingLine = text.Lines.GetLineFromPosition(rawStringToken.SpanStart);
+		var openingLine = text.Lines.GetLineFromPosition(rawString.OpeningDelimiterStart);
 		var rawStringClosingLine = text.Lines.GetLineFromPosition(closingDelimiterStart);
 		var closeParenLine = text.Lines.GetLineFromPosition(closeParen.SpanStart);
 
@@ -545,13 +528,13 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			return false;
 		}
 
-		var expectedRawStringIndent = GetLineIndentation(text, openingLine);
-		var currentRawStringIndent = GetLineIndentation(text, rawStringClosingLine);
+		var expectedRawStringIndent = text.GetLineIndentation(openingLine);
+		var currentRawStringIndent = text.GetLineIndentation(rawStringClosingLine);
 		var changes = new List<TextChange>();
 
 		if (expectedRawStringIndent != currentRawStringIndent) {
 			if (
-				!TryAddRawStringContentIndentChanges(
+				!RawStringLiteralIndentation.TryAddContentIndentChanges(
 					text,
 					openingLine.LineNumber + 1,
 					rawStringClosingLine.LineNumber,
@@ -590,25 +573,25 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 	) {
 		fixedText = text;
 
-		if (!TryGetMultilineRawStringDelimiter(rawStringToken, out var rawStringDelimiter)) {
+		if (!RawStringLiteralInfo.TryCreate(rawStringToken, out var rawString)) {
 			return false;
 		}
 
-		var closingDelimiterStart = rawStringToken.Span.End - rawStringDelimiter.Length;
+		var closingDelimiterStart = rawString.ClosingDelimiterStart;
 
 		if (closingDelimiterStart < rawStringToken.SpanStart) {
 			return false;
 		}
 
-		var openingLine = text.Lines.GetLineFromPosition(rawStringToken.SpanStart);
+		var openingLine = text.Lines.GetLineFromPosition(rawString.OpeningDelimiterStart);
 		var closingLine = text.Lines.GetLineFromPosition(closingDelimiterStart);
 
 		if (openingLine.LineNumber == closingLine.LineNumber) {
 			return false;
 		}
 
-		var expectedRawStringIndent = GetLineIndentation(text, openingLine);
-		var currentRawStringIndent = GetLineIndentation(text, closingLine);
+		var expectedRawStringIndent = text.GetLineIndentation(openingLine);
+		var currentRawStringIndent = text.GetLineIndentation(closingLine);
 
 		if (expectedRawStringIndent == currentRawStringIndent) {
 			return false;
@@ -617,7 +600,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		var changes = new List<TextChange>();
 
 		if (
-			!TryAddRawStringContentIndentChanges(
+			!RawStringLiteralIndentation.TryAddContentIndentChanges(
 				text,
 				openingLine.LineNumber + 1,
 				closingLine.LineNumber,
@@ -640,166 +623,13 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		return true;
 	}
 
-	private static bool TryAddRawStringContentIndentChanges(
-		SourceText text,
-		int firstContentLineNumber,
-		int closingLineNumber,
-		string currentRawStringIndent,
-		string expectedRawStringIndent,
-		List<TextChange> changes
-	) {
-		for (
-			var lineNumber = firstContentLineNumber;
-			lineNumber < closingLineNumber;
-			lineNumber++
-		) {
-			var line = text.Lines[lineNumber];
-			var lineText = text.ToString(TextSpan.FromBounds(line.Start, line.End));
-
-			if (lineText.Length == 0) {
-				continue;
-			}
-
-			if (currentRawStringIndent.Length == 0) {
-				changes.Add(new TextChange(new TextSpan(line.Start, 0), expectedRawStringIndent));
-				continue;
-			}
-
-			if (!lineText.StartsWith(currentRawStringIndent, StringComparison.Ordinal)) {
-				if (string.IsNullOrWhiteSpace(lineText)) {
-					continue;
-				}
-
-				return false;
-			}
-
-			changes.Add(
-				new TextChange(
-					new TextSpan(line.Start, currentRawStringIndent.Length),
-					expectedRawStringIndent
-				)
-			);
-		}
-
-		return true;
-	}
-
-	private static bool TryGetRawStringClosingDelimiter(
-		string actualPrefix,
-		out string indent,
-		out string delimiter
-	) {
-		indent = string.Empty;
-		delimiter = string.Empty;
-
-		var delimiterStart = 0;
-
-		while (
-			delimiterStart < actualPrefix.Length
-			&& actualPrefix[delimiterStart] is ' ' or '\t'
-		) {
-			delimiterStart++;
-		}
-
-		var delimiterEnd = actualPrefix.Length;
-
-		while (
-			delimiterEnd > delimiterStart
-			&& actualPrefix[delimiterEnd - 1] is ' ' or '\t'
-		) {
-			delimiterEnd--;
-		}
-
-		if (delimiterEnd - delimiterStart < 3) {
-			return false;
-		}
-
-		for (var index = delimiterStart; index < delimiterEnd; index++) {
-			if (actualPrefix[index] != '"') {
-				return false;
-			}
-		}
-
-		indent = actualPrefix.Substring(0, delimiterStart);
-		delimiter = actualPrefix.Substring(delimiterStart, delimiterEnd - delimiterStart);
-		return true;
-	}
-
-	private static bool TryGetMultilineRawStringDelimiter(
-		SyntaxToken token,
-		out string delimiter
-	) {
-		delimiter = string.Empty;
-
-		var tokenText = token.Text;
-		var delimiterLength = 0;
-
-		while (delimiterLength < tokenText.Length && tokenText[delimiterLength] == '"') {
-			delimiterLength++;
-		}
-
-		if (delimiterLength < 3) {
-			return false;
-		}
-
-		delimiter = tokenText.Substring(0, delimiterLength);
-		return IsMultilineRawStringLiteral(token, delimiter);
-	}
-
-	private static bool IsMultilineRawStringLiteral(
-		SyntaxToken token,
-		string delimiter
-	) {
-		var tokenText = token.Text;
-
-		return tokenText.StartsWith(delimiter, StringComparison.Ordinal)
-			&& tokenText.EndsWith(delimiter, StringComparison.Ordinal)
-			&& tokenText.Any(static character => character is '\r' or '\n');
-	}
-
-	private static string GetLineIndentation(SourceText text, TextLine line) {
-		var lineText = text.ToString(TextSpan.FromBounds(line.Start, line.End));
-		var index = 0;
-
-		while (
-			index < lineText.Length
-			&& (lineText[index] == ' ' || lineText[index] == '\t')
-		) {
-			index++;
-		}
-
-		return lineText.Substring(0, index);
-	}
-
-	private static string GetLineBreak(SourceText text) {
-		foreach (var line in text.Lines) {
-			if (line.EndIncludingLineBreak > line.End) {
-				return text.ToString(TextSpan.FromBounds(line.End, line.EndIncludingLineBreak));
-			}
-		}
-
-		return "\r\n";
-	}
-
-	private static string GetLineBreak(SourceText text, TextLine preferredLine) {
-		if (preferredLine.EndIncludingLineBreak > preferredLine.End) {
-			return text.ToString(TextSpan.FromBounds(preferredLine.End, preferredLine.EndIncludingLineBreak));
-		}
-
-		return GetLineBreak(text);
-	}
-
 	private static int GetMaxLineLength(
 		Document document,
 		SyntaxTree tree
 	) {
 		var options = document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider.GetOptions(tree);
 
-		if (
-			options.TryGetValue("max_line_length", out var value)
-			&& int.TryParse(value, out var maxLineLength)
-			&& maxLineLength > 0
-		) {
+		if (options.TryGetPositiveInt32("max_line_length", out var maxLineLength)) {
 			return maxLineLength;
 		}
 
@@ -821,7 +651,7 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		var gapSpan = TextSpan.FromBounds(memberAccess.Expression.Span.End, memberAccess.OperatorToken.SpanStart);
 
-		if (!text.ToString(gapSpan).All(static character => char.IsWhiteSpace(character))) {
+		if (!text.IsWhiteSpace(gapSpan)) {
 			return false;
 		}
 
@@ -831,55 +661,4 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		return receiverText.Length + invocationText.Length <= maxLineLength;
 	}
 
-	private static bool TryGetFirstInvocationMemberAccess(
-		ArgumentListSyntax node,
-		out MemberAccessExpressionSyntax memberAccess
-	) {
-		memberAccess = null!;
-
-		if (node.Parent is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax value }) {
-			return false;
-		}
-
-		var memberName = value.Name switch {
-			GenericNameSyntax genericName => genericName.Identifier.ValueText,
-			IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
-			_ => string.Empty,
-		};
-
-		if (!memberName.StartsWith("First", StringComparison.Ordinal)) {
-			return false;
-		}
-
-		memberAccess = value;
-		return true;
-	}
-
-	private static bool TryGetExpressionBody(
-		ParameterListSyntax node,
-		out ArrowExpressionClauseSyntax expressionBody
-	) {
-		expressionBody = node.Parent switch {
-			ConstructorDeclarationSyntax { ExpressionBody: { } value } => value,
-			ConversionOperatorDeclarationSyntax { ExpressionBody: { } value } => value,
-			LocalFunctionStatementSyntax { ExpressionBody: { } value } => value,
-			MethodDeclarationSyntax { ExpressionBody: { } value } => value,
-			OperatorDeclarationSyntax { ExpressionBody: { } value } => value,
-			_ => null!,
-		};
-
-		return expressionBody is not null;
-	}
-
-	private static bool TryGetBaseList(
-		ParameterListSyntax node,
-		out BaseListSyntax baseList
-	) {
-		baseList = node.Parent switch {
-			TypeDeclarationSyntax { BaseList: { } value } => value,
-			_ => null!,
-		};
-
-		return baseList is not null;
-	}
 }

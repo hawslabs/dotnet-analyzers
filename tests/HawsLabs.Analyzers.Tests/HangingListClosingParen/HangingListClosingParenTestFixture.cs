@@ -23,7 +23,7 @@ public abstract class HangingListClosingParenTestFixture
 			public sealed class OnPremServiceBusClient(
 				OnPremServiceClientConnection connection,
 				ServiceBusClientAuthentication authentication
-			[|)|]
+			{|HA9002:)|}
 				: SignalRServiceBusClient(authentication) {
 				protected override bool TryGetBusUrl(
 					ServiceBusEnvelope envelope,
@@ -63,7 +63,7 @@ public abstract class HangingListClosingParenTestFixture
 	}
 
 	protected static string PrimaryConstructorBaseListOnClosingParenLine() {
-		var source = PrimaryConstructorBaseListOnNextLine().Replace("[|)|]", ")", StringComparison.Ordinal);
+		var source = PrimaryConstructorBaseListOnNextLine().Replace("{|HA9002:)|}", ")", StringComparison.Ordinal);
 
 		return source.Replace(
 			")\r\n\t: SignalRServiceBusClient(authentication)",

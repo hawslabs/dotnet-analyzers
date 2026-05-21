@@ -1,53 +1,101 @@
 # HawsLabs C# Code Analyzers
 
-## Tooling
+HawsLabs.Analyzers is a Roslyn analyzer package with C# diagnostics and code fixes for HawsLabs
+formatting conventions.
 
-Install `just` with the package manager that matches your machine:
+## Install
 
-- Windows (winget): `winget install --id Casey.Just --exact`
-- macOS or Linux (Homebrew): `brew install just`
-- Debian 13 / Ubuntu 24.04+ derivatives: `apt install just`
-- Fedora: `dnf install just`
-- Arch Linux: `pacman -S just`
-- Cargo fallback: `cargo install just`
+Install the package into each project that should be analyzed:
 
-## Development
+```bash
+dotnet add package HawsLabs.Analyzers
+```
 
-This repo includes a root `justfile` as a lightweight shortcut for common .NET workflows.
+Keep analyzer references private so they do not flow to downstream consumers of your project:
 
-- VS Code workspace tasks wrap the main `just` recipes for build, test, verify, format-check, and fix.
-- `just build` — build `HawsLabs.Analyzers.slnx`
-- `just test` — run the analyzer test suite
-- `just test-watch` — rerun tests on change while working on analyzer code
-- `just verify` — build, then run tests without rebuilding
-- `just format` — run `dotnet format`
-- `just format-check` — fail fast if formatting drift would make the build unhappy
-- `just fix` — run formatting fixes, then build the solution
-- `just self-analyze` — build the analyzer, then run it against `packages/analyzers/HawsLabs.Analyzers.csproj`
-- `just self-fix` — build the analyzer, then run its formatting code fixes against the solution
-- `just test-filter HangingListClosingParen` — run a focused test subset with `dotnet test --filter`
-- `just test-name CodeFixTests` — run tests whose fully-qualified name contains a given value
-- `just test-scope HangingListClosingParen` — preferred shorthand for scoping tests to a namespace, fixture, or feature slice
-- `just test-file HangingListClosingParen` — quickly scope test runs to a fixture or folder-style namespace segment
+```xml
+<ItemGroup>
+	<PackageReference Include="HawsLabs.Analyzers" Version="x.y.z" PrivateAssets="all" />
+</ItemGroup>
+```
 
-## VS Code tasks
+For projects that use Central Package Management, put the version in `Directory.Packages.props`:
 
-If you prefer staying inside VS Code, open the Command Palette and run `Tasks: Run Task`, then pick one of these workspace tasks:
+```xml
+<ItemGroup>
+	<PackageVersion Include="HawsLabs.Analyzers" Version="x.y.z" />
+</ItemGroup>
+```
 
-- `restore HawsLabs.Analyzers.slnx`
-- `build HawsLabs.Analyzers.slnx`
-- `test HawsLabs.Analyzers.slnx`
-- `verify HawsLabs.Analyzers.slnx`
-- `format-check HawsLabs.Analyzers.slnx`
-- `fix HawsLabs.Analyzers.slnx`
+Then reference the analyzer from each project:
 
-The workspace also pins `HawsLabs.Analyzers.slnx` as the default solution for C# Dev Kit, so opening the repo should load the intended solution automatically.
+```xml
+<ItemGroup>
+	<PackageReference Include="HawsLabs.Analyzers" PrivateAssets="all" />
+</ItemGroup>
+```
 
-## Publishing
+## Configure
 
-The `Build, test, and publish` GitHub Actions workflow restores, builds, tests, and packs `packages/analyzers/HawsLabs.Analyzers.csproj`.
+Configure diagnostics in `.editorconfig` with standard Roslyn analyzer severity settings:
 
-- Pull requests publish prerelease packages to GitHub Packages when the PR branch belongs to this repository.
-- Main branch runs publish packages to GitHub Packages and nuget.org.
-- nuget.org publishing expects `NUGET_API_KEY` to be available to the workflow.
-- GitHub Packages publishing uses the workflow `GITHUB_TOKEN`.
+```editorconfig
+[*.cs]
+dotnet_diagnostic.HA9000.severity = warning
+dotnet_diagnostic.HA9001.severity = warning
+dotnet_diagnostic.HA9002.severity = warning
+dotnet_diagnostic.HA9003.severity = warning
+dotnet_diagnostic.HA9004.severity = warning
+dotnet_diagnostic.HA9005.severity = warning
+```
+
+Use `error` to fail builds for a rule, or `none` to disable a rule.
+
+Several formatting rules also read existing EditorConfig settings:
+
+```editorconfig
+[*]
+max_line_length = 110
+indent_brace_style = 1TBS
+
+[*.cs]
+csharp_prefer_braces = true:error
+csharp_new_line_before_open_brace = none
+csharp_new_line_before_else = false
+csharp_new_line_before_catch = false
+csharp_new_line_before_finally = false
+csharp_new_line_before_members_in_object_initializers = false
+csharp_new_line_before_members_in_anonymous_types = false
+csharp_new_line_between_query_expression_clauses = false
+dotnet_diagnostic.IDE0011.severity = error
+```
+
+## Use
+
+After restore, the analyzers run anywhere Roslyn analyzers run: Visual Studio, VS Code with C# Dev Kit,
+`dotnet build`, and CI builds.
+
+Apply supported code fixes from your editor, or run them from the command line:
+
+```bash
+dotnet format <solution-or-project> analyzers --diagnostics HA9000 HA9001 HA9002 HA9003 HA9004
+```
+
+## Rules
+
+| Id     | Summary                                                        | Code fix |
+| ------ | -------------------------------------------------------------- | :------: |
+| HA9000 | Put hanging-list closing parenthesis on its own line           |   Yes    |
+| HA9001 | Put split list items on separate lines                         |   Yes    |
+| HA9002 | Keep parameter-list continuations with the closing parenthesis |   Yes    |
+| HA9003 | Keep short First calls with their receiver                     |   Yes    |
+| HA9004 | Format multiline raw string literal indentation                |   Yes    |
+| HA9005 | Keep 1TBS brace settings consistent                            |    No    |
+
+See the full rule documentation at
+[docs/rules.md](https://github.com/HawsLabs/dotnet-analyzers/blob/main/docs/rules.md).
+
+## Contributing
+
+Contributor setup, development commands, VS Code tasks, and publishing notes live in
+[CONTRIBUTING.md](https://github.com/HawsLabs/dotnet-analyzers/blob/main/CONTRIBUTING.md).
