@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 	installation, configuration, and usage.
 - Added category-based HawsLabs diagnostic ID ranges aligned with .NET code analysis categories, including the HA9000-HA9999 Style range for the current formatting rules.
 - Added `HA9005` to warn when `indent_brace_style = 1TBS` or `OTBS` conflicts with matching C# brace and newline formatting options, including per-option diagnostics for observable `csharp_prefer_braces` / `IDE0011` severity conflicts.
+- Added `HA9006` to align over-indented hanging argument-list items with the expected continuation indentation, including a code fix.
 - Added a GitHub Actions workflow that builds, tests, packs, and publishes analyzer packages to GitHub Packages on main and repository pull requests, plus nuget.org on main.
 - Added `HA9004` to format multiline raw string literal indentation, including direct return statements and raw string arguments.
 - Added shared package metadata, versioning, repository, Source Link, and portable PDB settings for the analyzer NuGet package.

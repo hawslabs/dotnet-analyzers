@@ -63,6 +63,7 @@ The active codebase currently centers on `packages/analyzers/HawsLabs.Analyzers.
 - Build from the repository root with `dotnet build HawsLabs.Analyzers.slnx`.
 - When analyzer or code-fix behavior changes, add or update focused tests.
 - If the repository does not yet have the right test project for a change, add the smallest useful test project instead of inventing large test infrastructure.
+- When a test scenario comes from user or product code, sanitize names and values from the original example and reduce the fixture to the minimum code needed to exercise the behavior.
 - Validate with the narrowest relevant build or test commands and summarize the results.
 - This repo currently has no executable sample app; do not add sample-specific tasks or launch configurations unless such a project is introduced on purpose.
 

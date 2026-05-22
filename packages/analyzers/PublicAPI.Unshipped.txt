@@ -3,6 +3,7 @@ HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer
 HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.OneTrueBraceStyleAnalyzer() -> void
 const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.ParameterListContinuationDiagnosticId = "HA9002" -> string!
 const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.ShortFirstCallDiagnosticId = "HA9003" -> string!
+const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.HangingListItemIndentationDiagnosticId = "HA9006" -> string!
 const HawsLabs.Analyzers.HangingListClosingParenAnalyzer.SplitListItemsDiagnosticId = "HA9001" -> string!
 const HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.DiagnosticId = "HA9005" -> string!
 override HawsLabs.Analyzers.OneTrueBraceStyleAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void

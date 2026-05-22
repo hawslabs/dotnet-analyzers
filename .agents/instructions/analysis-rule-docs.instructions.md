@@ -1,13 +1,13 @@
 ---
-description: 'Use when adding or updating Roslyn analyzer or code-fix documentation in this repo, especially docs/rules.md and docs/rules/*.md. Covers the Meziantou-style rules table, per-rule markdown pages, diagnostic metadata, and code example maintenance.'
-applyTo: 'docs/rules.md, docs/rules/*.md'
+description: 'Use when adding or updating Roslyn analyzer or code-fix documentation in this repo, especially README.md and docs/rules/*.md. Covers the Meziantou-style rules table, per-rule markdown pages, diagnostic metadata, and code example maintenance.'
+applyTo: 'README.md, docs/rules/*.md'
 ---
 
 # Analyzer Rule Documentation
 
 Maintain analyzer rule documentation in a Meziantou-style structure:
 
-- Keep the catalog page in `docs/rules.md`.
+- Keep the catalog in the `Rules` section of `README.md`.
 - Keep one markdown file per rule in the lowercase `docs/rules/` folder.
 - Keep full rule details in the per-rule file, not in the catalog.
 - Even while the repo has only one rule, maintain both the catalog page and the per-rule page.
@@ -21,11 +21,12 @@ Maintain analyzer rule documentation in a Meziantou-style structure:
 - Do not document behavior, options, or automatic fixes that the code does not currently implement.
 - If a requested filename, heading, or stale document disagrees with the live `DiagnosticId`, use the actual `DiagnosticId` from source instead of inventing a new one.
 
-## Catalog page
+## Catalog
 
-In `docs/rules.md`:
+In the `Rules` section of `README.md`:
 
-- Start with a short heading such as `# HawsLabs.Analyzers rules`.
+- Keep the rule catalog under the existing `## Rules` heading.
+- Keep the rule ID range table in the same section.
 - Use a compact summary table inspired by `Meziantou.Analyzer`.
 - Keep one row per rule, ordered by `DiagnosticId`.
 - Link the `Id` cell to the matching rule page in `docs/rules/`.
@@ -93,13 +94,13 @@ Treat the sample values above as a shape example only. Always replace them with 
 - Keep the folder name lowercase: `docs/rules/`.
 - Name each rule page after the real `DiagnosticId`.
 - Keep page titles, metadata tables, and linked filenames consistent with the analyzer source.
-- Update `docs/rules.md` and the matching per-rule page in the same change.
+- Update the README catalog and the matching per-rule page in the same change.
 - When analyzer behavior, rule titles, severity defaults, or code-fix behavior changes, update the rule docs in the same PR.
 - Do not leave the catalog or rule pages stale after adding a new analyzer or code fix.
 
 ## Review checklist
 
-- [ ] `docs/rules.md` has one row per rule and links to the correct page.
+- [ ] The README catalog has one row per rule and links to the correct page.
 - [ ] The per-rule filename matches the actual `DiagnosticId`.
 - [ ] The metadata table matches the live `DiagnosticDescriptor`.
 - [ ] Description, motivation, and fix guidance match current analyzer behavior.

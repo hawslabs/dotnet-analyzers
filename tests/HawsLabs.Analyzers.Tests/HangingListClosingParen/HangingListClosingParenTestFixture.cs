@@ -18,47 +18,16 @@ public abstract class HangingListClosingParenTestFixture
 
 	protected static string PrimaryConstructorBaseListOnNextLine() {
 		return """
-			namespace BoringLab.ServiceBus.OnPrem.Client;
+			namespace TestCode;
 
-			public sealed class OnPremServiceBusClient(
-				OnPremServiceClientConnection connection,
-				ServiceBusClientAuthentication authentication
+			public sealed class Derived(
+				string name,
+				int count
 			{|HA9002:)|}
-				: SignalRServiceBusClient(authentication) {
-				protected override bool TryGetBusUrl(
-					ServiceBusEnvelope envelope,
-					out string busUrl,
-					out ServiceBusSendResult unavailable
-				) => TryUseConfiguredBusUrl(connection.BrokerUrl, out busUrl, out unavailable);
+				: Base(name) {
 			}
 
-			public sealed class OnPremServiceClientConnection {
-				public string BrokerUrl => string.Empty;
-			}
-
-			public sealed class ServiceBusClientAuthentication;
-
-			public sealed class ServiceBusEnvelope;
-
-			public sealed class ServiceBusSendResult;
-
-			public abstract class SignalRServiceBusClient(ServiceBusClientAuthentication authentication) {
-				protected abstract bool TryGetBusUrl(
-					ServiceBusEnvelope envelope,
-					out string busUrl,
-					out ServiceBusSendResult unavailable
-				);
-
-				protected bool TryUseConfiguredBusUrl(
-					string brokerUrl,
-					out string busUrl,
-					out ServiceBusSendResult unavailable
-				) {
-					busUrl = brokerUrl;
-					unavailable = new ServiceBusSendResult();
-					return true;
-				}
-			}
+			public abstract class Base(string name);
 			""";
 	}
 
@@ -66,14 +35,54 @@ public abstract class HangingListClosingParenTestFixture
 		var source = PrimaryConstructorBaseListOnNextLine().Replace("{|HA9002:)|}", ")", StringComparison.Ordinal);
 
 		return source.Replace(
-			")\r\n\t: SignalRServiceBusClient(authentication)",
-			") : SignalRServiceBusClient(authentication)",
+			")\r\n\t: Base(name)",
+			") : Base(name)",
 			StringComparison.Ordinal
 		).Replace(
-			")\n\t: SignalRServiceBusClient(authentication)",
-			") : SignalRServiceBusClient(authentication)",
+			")\n\t: Base(name)",
+			") : Base(name)",
 			StringComparison.Ordinal
 		);
+	}
+
+	protected static string ExpressionBodiedInvocationWithOverIndentedHangingArguments() {
+		return """
+			using System.Threading.Tasks;
+
+			namespace TestCode;
+
+			public static class Calls {
+			    private static Task<int> TargetAsync(
+			        string name,
+			        int count,
+			        bool enabled
+			    ) => Task.FromResult(0);
+
+			    public static Task<int> TestAsync() => TargetAsync(
+			            "name",
+			            1,
+			            true
+			    {|HA9006:)|};
+			}
+			""";
+	}
+
+	protected static string ExpressionBodiedInvocationWithAlignedHangingArguments() {
+		return ExpressionBodiedInvocationWithOverIndentedHangingArguments()
+			.Replace("{|HA9006:)|}", ")", StringComparison.Ordinal)
+			.Replace(
+				"            \"name\",",
+				"        \"name\",",
+				StringComparison.Ordinal
+			).Replace(
+				"            1,",
+				"        1,",
+				StringComparison.Ordinal
+			).Replace(
+				"            true",
+				"        true",
+				StringComparison.Ordinal
+			);
 	}
 
 	protected static DiagnosticResult Diagnostic() {

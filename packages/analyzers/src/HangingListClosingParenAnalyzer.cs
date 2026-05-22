@@ -13,6 +13,7 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 	public const string SplitListItemsDiagnosticId = DiagnosticIds.SplitListItems;
 	public const string ParameterListContinuationDiagnosticId = DiagnosticIds.ParameterListContinuation;
 	public const string ShortFirstCallDiagnosticId = DiagnosticIds.ShortFirstCall;
+	public const string HangingListItemIndentationDiagnosticId = DiagnosticIds.HangingListItemIndentation;
 	private const int DefaultMaxLineLength = 110;
 
 	private static readonly DiagnosticDescriptor Rule = new(
@@ -64,11 +65,24 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			+ "the receiver and move the multiline argument body onto following lines."
 	);
 
+	private static readonly DiagnosticDescriptor HangingListItemIndentationRule = new(
+		id: HangingListItemIndentationDiagnosticId,
+		title: "Align hanging-list items with continuation indentation",
+		messageFormat: "Hanging-list items should align with the continuation indentation",
+		category: DiagnosticCategories.Style,
+		defaultSeverity: DiagnosticSeverity.Warning,
+		isEnabledByDefault: true,
+		description:
+			"When an argument list starts on the line after its opening parenthesis, "
+			+ "each argument should align one indentation level past the line containing the opening parenthesis."
+	);
+
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
 		Rule,
 		SplitListItemsRule,
 		ParameterListContinuationRule,
-		ShortFirstCallRule
+		ShortFirstCallRule,
+		HangingListItemIndentationRule
 	);
 
 	public override void Initialize(AnalysisContext context) {
@@ -98,6 +112,9 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 			node.CloseParenToken,
 			node.Arguments.Select(static argument => argument.GetFirstToken()).ToArray()
 		) || AnalyzeShortFirstCallWithMultilineArgument(
+			context,
+			node
+		) || AnalyzeHangingListItemIndentation(
 			context,
 			node
 		);
@@ -239,6 +256,69 @@ public sealed class HangingListClosingParenAnalyzer : DiagnosticAnalyzer {
 
 		context.ReportDiagnostic(Diagnostic.Create(Rule, closeParen.GetLocation()));
 		return true;
+	}
+
+	private static bool AnalyzeHangingListItemIndentation(
+		SyntaxNodeAnalysisContext context,
+		ArgumentListSyntax node
+	) {
+		if (node.Arguments.Count == 0 || node.OpenParenToken.IsMissing || node.CloseParenToken.IsMissing) {
+			return false;
+		}
+
+		var tree = node.SyntaxTree;
+
+		if (tree is null) {
+			return false;
+		}
+
+		var text = tree.GetText(context.CancellationToken);
+		var openLine = text.Lines.GetLineFromPosition(node.OpenParenToken.SpanStart);
+		var closeLine = text.Lines.GetLineFromPosition(node.CloseParenToken.SpanStart);
+
+		if (openLine.LineNumber == closeLine.LineNumber) {
+			return false;
+		}
+
+		var expectedCloseIndent = text.GetLineIndentation(openLine);
+		var actualClosePrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, node.CloseParenToken.SpanStart));
+
+		if (actualClosePrefix != expectedCloseIndent) {
+			return false;
+		}
+
+		var expectedItemIndent = expectedCloseIndent + IndentationStyle.GetIndentUnit(expectedCloseIndent);
+
+		foreach (var argument in node.Arguments) {
+			if (argument.Expression is LiteralExpressionSyntax literalExpression && RawStringLiteralInfo.TryCreate(literalExpression.Token, out _)) {
+				return false;
+			}
+
+			var firstToken = argument.GetFirstToken();
+
+			if (firstToken.IsMissing) {
+				return false;
+			}
+
+			var itemLine = text.Lines.GetLineFromPosition(firstToken.SpanStart);
+
+			if (itemLine.LineNumber == openLine.LineNumber) {
+				return false;
+			}
+
+			var actualItemPrefix = text.ToString(TextSpan.FromBounds(itemLine.Start, firstToken.SpanStart));
+
+			if (!actualItemPrefix.All(static character => character is ' ' or '\t')) {
+				return false;
+			}
+
+			if (actualItemPrefix != expectedItemIndent) {
+				context.ReportDiagnostic(Diagnostic.Create(HangingListItemIndentationRule, node.CloseParenToken.GetLocation()));
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private static bool AnalyzeSplitListItems(

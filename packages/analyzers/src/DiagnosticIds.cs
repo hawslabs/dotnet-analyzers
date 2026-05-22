@@ -7,4 +7,5 @@ internal static class DiagnosticIds {
 	public const string ShortFirstCall = "HA9003";
 	public const string ReturnRawStringLiteral = "HA9004";
 	public const string OneTrueBraceStyle = "HA9005";
+	public const string HangingListItemIndentation = "HA9006";
 }

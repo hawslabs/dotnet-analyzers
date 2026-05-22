@@ -47,6 +47,7 @@ dotnet_diagnostic.HA9002.severity = warning
 dotnet_diagnostic.HA9003.severity = warning
 dotnet_diagnostic.HA9004.severity = warning
 dotnet_diagnostic.HA9005.severity = warning
+dotnet_diagnostic.HA9006.severity = warning
 ```
 
 Use `error` to fail builds for a rule, or `none` to disable a rule.
@@ -78,22 +79,39 @@ After restore, the analyzers run anywhere Roslyn analyzers run: Visual Studio, V
 Apply supported code fixes from your editor, or run them from the command line:
 
 ```bash
-dotnet format <solution-or-project> analyzers --diagnostics HA9000 HA9001 HA9002 HA9003 HA9004
+dotnet format <solution-or-project> analyzers --diagnostics HA9000 HA9001 HA9002 HA9003 HA9004 HA9006
 ```
 
 ## Rules
 
-| Id     | Summary                                                        | Code fix |
-| ------ | -------------------------------------------------------------- | :------: |
-| HA9000 | Put hanging-list closing parenthesis on its own line           |   Yes    |
-| HA9001 | Put split list items on separate lines                         |   Yes    |
-| HA9002 | Keep parameter-list continuations with the closing parenthesis |   Yes    |
-| HA9003 | Keep short First calls with their receiver                     |   Yes    |
-| HA9004 | Format multiline raw string literal indentation                |   Yes    |
-| HA9005 | Keep 1TBS brace settings consistent                            |    No    |
+### Rule ID ranges
 
-See the full rule documentation at
-[docs/rules.md](https://github.com/HawsLabs/dotnet-analyzers/blob/main/docs/rules.md).
+| Range       | Category         |
+| ----------- | ---------------- |
+| HA1000-1199 | Design           |
+| HA1200-1299 | Documentation    |
+| HA1300-1399 | Globalization    |
+| HA1400-1499 | Interoperability |
+| HA1500-1699 | Maintainability  |
+| HA1700-1799 | Naming           |
+| HA1800-1999 | Performance      |
+| HA2000-2099 | Reliability      |
+| HA2100-2199 | Security         |
+| HA2200-2299 | Usage            |
+| HA2300-2399 | SingleFile       |
+| HA9000-9999 | Style            |
+
+### Rule catalog
+
+| Id                             | Category | Description                                                    | Severity | Enabled | Code fix |
+| ------------------------------ | -------- | -------------------------------------------------------------- | :------: | :-----: | :------: |
+| [HA9000](docs/rules/HA9000.md) | Style    | Put hanging-list closing parenthesis on its own line           |    ⚠️     |    ✔️    |    ✔️     |
+| [HA9001](docs/rules/HA9001.md) | Style    | Put split list items on separate lines                         |    ⚠️     |    ✔️    |    ✔️     |
+| [HA9002](docs/rules/HA9002.md) | Style    | Keep parameter-list continuations with the closing parenthesis |    ⚠️     |    ✔️    |    ✔️     |
+| [HA9003](docs/rules/HA9003.md) | Style    | Keep short First calls with their receiver                     |    ⚠️     |    ✔️    |    ✔️     |
+| [HA9004](docs/rules/HA9004.md) | Style    | Format multiline raw string literal indentation                |    ⚠️     |    ✔️    |    ✔️     |
+| [HA9005](docs/rules/HA9005.md) | Style    | Keep 1TBS brace settings consistent                            |    ⚠️     |    ✔️    |    ❌     |
+| [HA9006](docs/rules/HA9006.md) | Style    | Align hanging-list items with continuation indentation         |    ⚠️     |    ✔️    |    ✔️     |
 
 ## Contributing
 

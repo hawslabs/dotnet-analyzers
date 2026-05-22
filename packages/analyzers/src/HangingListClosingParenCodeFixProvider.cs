@@ -20,7 +20,8 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 		HangingListClosingParenAnalyzer.DiagnosticId,
 		HangingListClosingParenAnalyzer.SplitListItemsDiagnosticId,
 		HangingListClosingParenAnalyzer.ParameterListContinuationDiagnosticId,
-		HangingListClosingParenAnalyzer.ShortFirstCallDiagnosticId
+		HangingListClosingParenAnalyzer.ShortFirstCallDiagnosticId,
+		HangingListClosingParenAnalyzer.HangingListItemIndentationDiagnosticId
 	);
 
 	public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
@@ -88,6 +89,10 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 
 		if (TryExpandSplitList(text, closeParen, expectedIndent, lineBreak, out var expandedListText)) {
 			return document.WithText(expandedListText);
+		}
+
+		if (TryFixHangingListItemIndentation(text, closeParen, expectedIndent, out var fixedItemIndentationText)) {
+			return document.WithText(fixedItemIndentationText);
 		}
 
 		if (TryFixExpressionBodyArrowLine(text, closeParen, out var fixedExpressionBodyText)) {
@@ -327,11 +332,14 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 	) {
 		var openLineNumber = text.Lines.GetLineFromPosition(openParen.SpanStart).LineNumber;
 
+		var expectedContinuationIndent = GetExpectedContinuationIndent(expectedIndent);
+
 		foreach (var item in items) {
 			var itemLine = text.Lines.GetLineFromPosition(item.GetFirstToken().SpanStart);
 
 			if (itemLine.LineNumber != openLineNumber) {
-				return text.GetLineIndentation(itemLine);
+				var itemIndent = text.GetLineIndentation(itemLine);
+				return itemIndent == expectedContinuationIndent ? itemIndent : expectedContinuationIndent;
 			}
 		}
 
@@ -344,7 +352,81 @@ public sealed class HangingListClosingParenCodeFixProvider : CodeFixProvider {
 			}
 		}
 
-		return expectedIndent + "\t";
+		return expectedContinuationIndent;
+	}
+
+	private static bool TryFixHangingListItemIndentation(
+		SourceText text,
+		SyntaxToken closeParen,
+		string expectedIndent,
+		out SourceText fixedText
+	) {
+		fixedText = text;
+
+		if (
+			closeParen.Parent is not ArgumentListSyntax argumentList
+			|| argumentList.OpenParenToken.IsMissing
+			|| argumentList.CloseParenToken.IsMissing
+			|| argumentList.Arguments.Count == 0
+		) {
+			return false;
+		}
+
+		var openLine = text.Lines.GetLineFromPosition(argumentList.OpenParenToken.SpanStart);
+		var closeLine = text.Lines.GetLineFromPosition(argumentList.CloseParenToken.SpanStart);
+
+		if (openLine.LineNumber == closeLine.LineNumber) {
+			return false;
+		}
+
+		var actualClosePrefix = text.ToString(TextSpan.FromBounds(closeLine.Start, argumentList.CloseParenToken.SpanStart));
+
+		if (actualClosePrefix != expectedIndent) {
+			return false;
+		}
+
+		var itemIndent = GetExpectedContinuationIndent(expectedIndent);
+		var changes = new List<TextChange>();
+
+		foreach (var argument in argumentList.Arguments) {
+			if (argument.Expression is LiteralExpressionSyntax literalExpression && RawStringLiteralInfo.TryCreate(literalExpression.Token, out _)) {
+				return false;
+			}
+
+			var firstToken = argument.GetFirstToken();
+
+			if (firstToken.IsMissing) {
+				return false;
+			}
+
+			var itemLine = text.Lines.GetLineFromPosition(firstToken.SpanStart);
+
+			if (itemLine.LineNumber == openLine.LineNumber) {
+				return false;
+			}
+
+			var itemPrefixSpan = TextSpan.FromBounds(itemLine.Start, firstToken.SpanStart);
+			var itemPrefix = text.ToString(itemPrefixSpan);
+
+			if (!itemPrefix.All(static character => character is ' ' or '\t')) {
+				return false;
+			}
+
+			if (itemPrefix != itemIndent) {
+				changes.Add(new TextChange(itemPrefixSpan, itemIndent));
+			}
+		}
+
+		if (changes.Count == 0) {
+			return false;
+		}
+
+		fixedText = text.WithChanges(changes.OrderBy(static change => change.Span.Start));
+		return true;
+	}
+
+	private static string GetExpectedContinuationIndent(string expectedIndent) {
+		return expectedIndent + IndentationStyle.GetIndentUnit(expectedIndent);
 	}
 
 	private static bool HasContinuationAfterCloseParen(

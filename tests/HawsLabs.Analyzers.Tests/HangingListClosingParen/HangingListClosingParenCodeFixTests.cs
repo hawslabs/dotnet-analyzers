@@ -55,6 +55,50 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 	}
 
 	[Fact]
+	public Task FormatsExpressionBodiedExtensionMethodForwardingInvocation() {
+		return VerifyCodeFixAsync(
+			"""
+			using System.Threading.Tasks;
+
+			namespace TestCode;
+
+			public sealed class Receiver;
+
+			public static class SampleExtensions {
+				public static Task<int> TargetAsync(this Receiver receiver, string first, string second) => Task.FromResult(0);
+
+				public static Task<int> RelayAsync(
+					this Receiver receiver,
+					string value
+				) => receiver.TargetAsync(
+						"first",
+						value
+				{|HA9006:)|};
+			}
+			""",
+			"""
+			using System.Threading.Tasks;
+
+			namespace TestCode;
+
+			public sealed class Receiver;
+
+			public static class SampleExtensions {
+				public static Task<int> TargetAsync(this Receiver receiver, string first, string second) => Task.FromResult(0);
+
+				public static Task<int> RelayAsync(
+					this Receiver receiver,
+					string value
+				) => receiver.TargetAsync(
+					"first",
+					value
+				);
+			}
+			"""
+		);
+	}
+
+	[Fact]
 	public Task FormatsArgumentListWrappingRawStringLiteralWhenClosingParenAlreadyHasDedicatedLine() {
 		return VerifyCodeFixAsync(
 			""""
@@ -419,22 +463,20 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 
 			internal static class TestCode {
 				private static void Test() {
-					var messageTypeName = string.Empty;
-					var messageType = ServiceBusMessageRegistry.MessageTypes
+					var expected = string.Empty;
+					var item = Items.Values
 						.FirstOrDefault(type => string.Equals(
-							WolverineMessageNaming.ToMessageTypeName(type),
-							messageTypeName,
+							Format(type),
+							expected,
 							StringComparison.Ordinal
 						){|HA9003:)|}!;
 				}
 
-				private static class ServiceBusMessageRegistry {
-					public static Type[] MessageTypes { get; } = Array.Empty<Type>();
+				private static class Items {
+					public static string[] Values { get; } = Array.Empty<string>();
 				}
 
-				private static class WolverineMessageNaming {
-					public static string ToMessageTypeName(Type type) => type.Name;
-				}
+				private static string Format(string value) => value;
 			}
 			""",
 			"""
@@ -443,23 +485,21 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 
 			internal static class TestCode {
 				private static void Test() {
-					var messageTypeName = string.Empty;
-					var messageType = ServiceBusMessageRegistry.MessageTypes.FirstOrDefault(
+					var expected = string.Empty;
+					var item = Items.Values.FirstOrDefault(
 						type => string.Equals(
-							WolverineMessageNaming.ToMessageTypeName(type),
-							messageTypeName,
+							Format(type),
+							expected,
 							StringComparison.Ordinal
 						)
 					)!;
 				}
 
-				private static class ServiceBusMessageRegistry {
-					public static Type[] MessageTypes { get; } = Array.Empty<Type>();
+				private static class Items {
+					public static string[] Values { get; } = Array.Empty<string>();
 				}
 
-				private static class WolverineMessageNaming {
-					public static string ToMessageTypeName(Type type) => type.Name;
-				}
+				private static string Format(string value) => value;
 			}
 			"""
 		);
@@ -469,40 +509,23 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 	public Task ExpandsPrimaryConstructorParameterListWhenBaseListMovesToNewLine() {
 		return VerifyCodeFixAsync(
 			"""
-			namespace System.Runtime.CompilerServices {
-				internal static class IsExternalInit {
-				}
-			}
-
 			namespace TestCode {
-				using System;
-
-				public interface IFrontendRoutedMessage {
+				public sealed class Derived(string name, int count{|HA9002:)|}
+					: Base(name) {
 				}
 
-				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason{|HA9002:)|}
-					: IFrontendRoutedMessage {
-				}
+				public abstract class Base(string name);
 			}
 			""",
 			"""
-			namespace System.Runtime.CompilerServices {
-				internal static class IsExternalInit {
-				}
-			}
-
 			namespace TestCode {
-				using System;
-
-				public interface IFrontendRoutedMessage {
+				public sealed class Derived(
+					string name,
+					int count
+				) : Base(name) {
 				}
 
-				public record CloudRouteUnavailable(
-					Guid InstallationId,
-					string MessageType,
-					string Reason
-				) : IFrontendRoutedMessage {
-				}
+				public abstract class Base(string name);
 			}
 			"""
 		);
@@ -513,65 +536,29 @@ public sealed class HangingListClosingParenCodeFixTests : HangingListClosingPare
 		return VerifyCodeFixAsync(
 			InType(
 				"""
-				private sealed class DistributedApplication {
-					public ResourceNotificationService ResourceNotifications { get; } = new();
-				}
-
-				private sealed class ResourceNotificationService {
-					public ResourceWaitOperation WaitForResourceHealthyAsync(
-						string resourceName,
-						System.Threading.CancellationToken cancellationToken
-					) => new();
-				}
-
-				private sealed class ResourceWaitOperation {
-					public System.Threading.Tasks.Task WaitAsync(
-						TimeSpan timeout,
-						System.Threading.CancellationToken cancellationToken
-					) => System.Threading.Tasks.Task.CompletedTask;
-				}
-
-				private static System.Threading.Tasks.Task WaitForResourceHealthyAsync(
-					this DistributedApplication app,
-					string resourceName,
-					TimeSpan timeout,
-					System.Threading.CancellationToken cancellationToken = default
+				private static string Format(
+					string value,
+					int count
 				{|HA9002:)|}
-					=> app.ResourceNotifications
-						.WaitForResourceHealthyAsync(resourceName, cancellationToken)
-						.WaitAsync(timeout, cancellationToken);
+					=> value;
 				"""
 			),
 			InType(
 				"""
-				private sealed class DistributedApplication {
-					public ResourceNotificationService ResourceNotifications { get; } = new();
-				}
-
-				private sealed class ResourceNotificationService {
-					public ResourceWaitOperation WaitForResourceHealthyAsync(
-						string resourceName,
-						System.Threading.CancellationToken cancellationToken
-					) => new();
-				}
-
-				private sealed class ResourceWaitOperation {
-					public System.Threading.Tasks.Task WaitAsync(
-						TimeSpan timeout,
-						System.Threading.CancellationToken cancellationToken
-					) => System.Threading.Tasks.Task.CompletedTask;
-				}
-
-				private static System.Threading.Tasks.Task WaitForResourceHealthyAsync(
-					this DistributedApplication app,
-					string resourceName,
-					TimeSpan timeout,
-					System.Threading.CancellationToken cancellationToken = default
-				) => app.ResourceNotifications
-						.WaitForResourceHealthyAsync(resourceName, cancellationToken)
-						.WaitAsync(timeout, cancellationToken);
+				private static string Format(
+					string value,
+					int count
+				) => value;
 				"""
 			)
+		);
+	}
+
+	[Fact]
+	public Task RealignsExpressionBodiedInvocationHangingArguments() {
+		return VerifyCodeFixAsync(
+			ExpressionBodiedInvocationWithOverIndentedHangingArguments(),
+			ExpressionBodiedInvocationWithAlignedHangingArguments()
 		);
 	}
 

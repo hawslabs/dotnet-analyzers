@@ -40,20 +40,12 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 	public Task ReportsDiagnosticForPrimaryConstructorWithBaseListOnNextLineWhenParametersShareOpeningLine() {
 		return VerifyAnalyzerAsync(
 			"""
-			namespace System.Runtime.CompilerServices {
-				internal static class IsExternalInit {
-				}
-			}
-
 			namespace TestCode {
-				using System;
-
-				public interface IFrontendRoutedMessage {
+				public sealed class Derived(string name, int count{|HA9002:)|}
+					: Base(name) {
 				}
 
-				public record CloudRouteUnavailable(Guid InstallationId, string MessageType, string Reason{|HA9002:)|}
-					: IFrontendRoutedMessage {
-				}
+				public abstract class Base(string name);
 			}
 			"""
 		);
@@ -63,35 +55,18 @@ public sealed class HangingListClosingParenAnalyzerTests : HangingListClosingPar
 	public Task ReportsDiagnosticForExpressionBodiedMethodWithArrowOnNextLine() {
 		return VerifyAnalyzerAsync(InType(
 			"""
-			private sealed class DistributedApplication {
-				public ResourceNotificationService ResourceNotifications { get; } = new();
-			}
-
-			private sealed class ResourceNotificationService {
-				public ResourceWaitOperation WaitForResourceHealthyAsync(
-					string resourceName,
-					System.Threading.CancellationToken cancellationToken
-				) => new();
-			}
-
-			private sealed class ResourceWaitOperation {
-				public System.Threading.Tasks.Task WaitAsync(
-					TimeSpan timeout,
-					System.Threading.CancellationToken cancellationToken
-				) => System.Threading.Tasks.Task.CompletedTask;
-			}
-
-			private static System.Threading.Tasks.Task WaitForResourceHealthyAsync(
-				this DistributedApplication app,
-				string resourceName,
-				TimeSpan timeout,
-				System.Threading.CancellationToken cancellationToken = default
+			private static string Format(
+				string value,
+				int count
 			{|HA9002:)|}
-				=> app.ResourceNotifications
-					.WaitForResourceHealthyAsync(resourceName, cancellationToken)
-					.WaitAsync(timeout, cancellationToken);
+				=> value;
 			"""
 		));
+	}
+
+	[Fact]
+	public Task ReportsDiagnosticForExpressionBodiedInvocationWithOverIndentedHangingArguments() {
+		return VerifyAnalyzerAsync(ExpressionBodiedInvocationWithOverIndentedHangingArguments());
 	}
 
 	[Fact]
